@@ -62,8 +62,20 @@ plugins {
 }
 ```
 
-## Usage
+You will, most likely, have to upgrade Gradle as well to at least 8.6, to do so, please modify the file `android/gradle/gradle-wrapper.properties` to look like this
 
+```bash
+distributionBase=GRADLE_USER_HOME
+distributionPath=wrapper/dists
+zipStoreBase=GRADLE_USER_HOME
+zipStorePath=wrapper/dists
+distributionUrl=https\://services.gradle.org/distributions/gradle-8.6-all.zip
+```
+
+You can also use the [use the Android Gradle plugin Upgrade Assistant](https://developer.android.com/build/agp-upgrade-assistant) to do this.
+
+
+## Usage
 
 
 ```dart
