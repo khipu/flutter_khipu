@@ -38,11 +38,12 @@ class _MyAppState extends State<MyApp> {
           skipExitPage: true,
           theme: 'dark',
           colors: KhipuColors(
-              darkBackground: '#00ff00',
-              darkPrimary: '#ff0000',
-              darkOnBackground: '#0000ff',
-              darkTopBarContainer: '#ffffff',
-              darkOnTopBarContainer: '#333333'));
+              // darkBackground: '#00ff00',
+              // darkPrimary: '#ff0000',
+              // darkOnBackground: '#0000ff',
+              // darkTopBarContainer: '#ffffff',
+              // darkOnTopBarContainer: '#333333'
+              ));
 
       result =
           await _flutterKhipuPlugin.startOperation(options) ?? KhipuResult();
