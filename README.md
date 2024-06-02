@@ -74,6 +74,21 @@ distributionUrl=https\://services.gradle.org/distributions/gradle-8.6-all.zip
 
 You can also use the [use the Android Gradle plugin Upgrade Assistant](https://developer.android.com/build/agp-upgrade-assistant) to do this.
 
+You may need to change the `sourceCompatibility` and `targetCompatibility` for the newer Android Gradle plugin, to do so make sure the `android/app/build.gradle` file has this
+
+```groovy
+android {
+
+  ...
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17 //Or the version needed for the AGP of your choose
+        targetCompatibility = JavaVersion.VERSION_17 //Or the version needed for the AGP of your choose
+    }
+
+  ...
+```
+
 
 ## Usage
 
