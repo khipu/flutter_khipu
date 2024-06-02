@@ -1,0 +1,56 @@
+PODS:
+  - Flutter (1.0.0)
+  - flutter_khipu (0.0.1):
+    - Flutter
+    - KhipuClientIOS
+  - integration_test (0.0.1):
+    - Flutter
+  - KhenshinProtocol (1.0.42)
+  - KhenshinSecureMessage (1.2.0):
+    - KHTweetNacl
+  - KhipuClientIOS (1.1.5):
+    - KhenshinProtocol (= 1.0.42)
+    - KhenshinSecureMessage (= 1.2.0)
+    - Socket.IO-Client-Swift
+    - Starscream (= 4.0.6)
+  - KHTweetNacl (1.1.4)
+  - Socket.IO-Client-Swift (16.1.0):
+    - Starscream (~> 4.0.6)
+  - Starscream (4.0.6)
+
+DEPENDENCIES:
+  - Flutter (from `Flutter`)
+  - flutter_khipu (from `.symlinks/plugins/flutter_khipu/ios`)
+  - integration_test (from `.symlinks/plugins/integration_test/ios`)
+
+SPEC REPOS:
+  trunk:
+    - KhenshinProtocol
+    - KhenshinSecureMessage
+    - KhipuClientIOS
+    - KHTweetNacl
+    - Socket.IO-Client-Swift
+    - Starscream
+
+EXTERNAL SOURCES:
+  Flutter:
+    :path: Flutter
+  flutter_khipu:
+    :path: ".symlinks/plugins/flutter_khipu/ios"
+  integration_test:
+    :path: ".symlinks/plugins/integration_test/ios"
+
+SPEC CHECKSUMS:
+  Flutter: e0871f40cf51350855a761d2e70bf5af5b9b5de7
+  flutter_khipu: 45296753d241288c54df0d3ea77c3c631f8ab969
+  integration_test: ce0a3ffa1de96d1a89ca0ac26fca7ea18a749ef4
+  KhenshinProtocol: 36184f1ef7bc2a1d3110f9ec4a8fce73c38ecbda
+  KhenshinSecureMessage: 60ba9ba77e08568dd992b5ef3850596c0dba8ad1
+  KhipuClientIOS: d343a5e2f05c4477813b10d24e3c1c64070cf43f
+  KHTweetNacl: 405b98e955a2fdb50eb8372fde9c6b50b218e51b
+  Socket.IO-Client-Swift: ee4b8f80a3db18dd7f32b266ddf273310609443c
+  Starscream: fb2c4510bebf908c62bd383bcf05e673720e91fd
+
+PODFILE CHECKSUM: 819463e6a0290f5a72f145ba7cde16e8b6ef0796
+
+COCOAPODS: 1.15.2
