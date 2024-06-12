@@ -45,50 +45,20 @@ Note that the `google()` and `mavenCentral()` repos are usually already added.
 If you are still using jetifier please add jackson-core to the list of ignored jars by adding the line
 
 ```groovy
-android.jetifier.ignorelist = jackson - core
+android.jetifier.ignorelist = jackson-core
 ```
 
 to the `android/gradle.properties` file
 
 #### Gradle plugins
 
-Khipu needs the Kotlin Android Gradle Plugin and the Android Gradle Plugin to be at least 1.9.0 and 8.4.0 respectively, so please make sure the file `android/settings.gradle` has at lease those versions
+Khipu needs the Kotlin Android Gradle Plugin to be at least 1.9.0, so please make sure the file `android/settings.gradle` has at least that version
 
 ```groovy
 plugins {
-    id "dev.flutter.flutter-plugin-loader" version "1.0.0"
-    id "com.android.application" version "8.4.0" apply false
     id "org.jetbrains.kotlin.android" version "1.9.0" apply false
 }
 ```
-
-You will, most likely, have to upgrade Gradle as well to at least 8.6, to do so, please modify the file `android/gradle/gradle-wrapper.properties` to look like this
-
-```bash
-distributionBase=GRADLE_USER_HOME
-distributionPath=wrapper/dists
-zipStoreBase=GRADLE_USER_HOME
-zipStorePath=wrapper/dists
-distributionUrl=https\://services.gradle.org/distributions/gradle-8.6-all.zip
-```
-
-You can also use the [use the Android Gradle plugin Upgrade Assistant](https://developer.android.com/build/agp-upgrade-assistant) to do this.
-
-You may need to change the `sourceCompatibility` and `targetCompatibility` for the newer Android Gradle plugin, to do so make sure the `android/app/build.gradle` file has this
-
-```groovy
-android {
-
-  ...
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17 //Or the version needed for the AGP of your choose
-        targetCompatibility = JavaVersion.VERSION_17 //Or the version needed for the AGP of your choose
-    }
-
-  ...
-```
-
 
 ## Usage
 
@@ -101,6 +71,8 @@ import 'package:flutter_khipu/flutter_khipu.dart';
 KhipuResult? result =
     await FlutterKhipu().startOperation(KhipuStartOperationOptions(
                                             operationId: "<string>", // The unique identifier of the payment intent
+                                            title: "<string>", // Text to show in the top bar
+                                            titleImageUrl: "<string>", // Image to show centered in the top bar (it replaces the title)
                                             locale: "<string>", // Regional settings for the interface language. The standard format combines an ISO 639-1 language code and an ISO 3166 country code. For example, "es_CL" for Spanish (Chile).
                                             skipExitPage: false, // If true, skips the exit page at the end of the payment process, whether successful or failed.
                                             theme: "<string>", // The theme of the interface, can be light, dark or system

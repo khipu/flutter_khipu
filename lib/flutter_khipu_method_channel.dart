@@ -17,6 +17,7 @@ class MethodChannelFlutterKhipu extends FlutterKhipuPlatform {
         .invokeMethod<dynamic>('startOperation', <String, dynamic>{
       'operationId': options.operationId,
       'title': options.title,
+      'titleImageUrl': options.titleImageUrl,
       'locale': options.locale,
       'skipExitPage': options.skipExitPage,
       'theme': options.theme,
