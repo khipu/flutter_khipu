@@ -41,6 +41,10 @@ public class FlutterKhipuPlugin: NSObject, FlutterPlugin {
         if (args["title"] is String) {
             optionsBuilder = optionsBuilder.topBarTitle(args["title"]! as! String)
         }
+
+        if (args["titleImageUrl"] is String) {
+            optionsBuilder = optionsBuilder.topBarImageUrl(args["titleImageUrl"]! as! String)
+        }
         
         if (args["skipExitPage"] is Bool) {
             optionsBuilder = optionsBuilder.skipExitPage(args["skipExitPage"]! as! Bool)

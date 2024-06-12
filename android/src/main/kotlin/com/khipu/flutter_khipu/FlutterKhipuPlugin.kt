@@ -54,6 +54,10 @@ class FlutterKhipuPlugin : FlutterPlugin, MethodCallHandler, PluginRegistry.Acti
             optionsBuilder.topBarTitle = it
         }
 
+        call.argument<String>("titleImageUrl")?.let {
+            optionsBuilder.topBarImageUrl = it
+        }
+
         call.argument<String>("locale")?.let {
             optionsBuilder.locale = it
         }

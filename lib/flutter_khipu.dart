@@ -40,6 +40,7 @@ class KhipuStartOperationOptions {
   String operationId;
   String? locale;
   String? title;
+  String? titleImageUrl;
   bool? skipExitPage;
   String? theme;
   KhipuColors? colors;
@@ -47,6 +48,7 @@ class KhipuStartOperationOptions {
   KhipuStartOperationOptions({required this.operationId,
     this.locale,
     this.title,
+    this.titleImageUrl,
     this.skipExitPage,
     this.theme,
     this.colors});

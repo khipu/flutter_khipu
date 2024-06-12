@@ -2,7 +2,7 @@ group = "com.khipu.flutter_khipu"
 version = "1.0-SNAPSHOT"
 
 buildscript {
-    ext.kotlin_version = "1.7.10"
+    ext.kotlin_version = "1.9.0"
     repositories {
         google()
         mavenCentral()
@@ -50,7 +50,7 @@ android {
     }
 
     dependencies {
-        implementation 'com.khipu:khipu-client-android:+'
+        implementation 'com.khipu:khipu-client-android:2.5.0'
         testImplementation("org.jetbrains.kotlin:kotlin-test")
         testImplementation("org.mockito:mockito-core:5.0.0")
     }
