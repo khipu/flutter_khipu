@@ -1,6 +1,6 @@
 name: flutter_khipu
 description: "Flutter plugin for Khipu"
-version: 1.0.5
+version: 1.1.0
 homepage: "https://github.com/khipu/flutter_khipu"
 
 environment:
