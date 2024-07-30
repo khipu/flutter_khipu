@@ -75,6 +75,7 @@ KhipuResult? result =
                                             titleImageUrl: "<string>", // Image to show centered in the top bar (it replaces the title)
                                             locale: "<string>", // Regional settings for the interface language. The standard format combines an ISO 639-1 language code and an ISO 3166 country code. For example, "es_CL" for Spanish (Chile).
                                             skipExitPage: false, // If true, skips the exit page at the end of the payment process, whether successful or failed.
+                                            showFooter: true, // If true, a message is displayed with a Khipu logo
                                             theme: "<string>", // The theme of the interface, can be light, dark or system
                                             colors: KhipuColors(
                                                 lightBackground: "<hexColor>", //Optional General background color in light mode

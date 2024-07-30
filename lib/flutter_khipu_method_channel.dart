@@ -20,6 +20,7 @@ class MethodChannelFlutterKhipu extends FlutterKhipuPlatform {
       'titleImageUrl': options.titleImageUrl,
       'locale': options.locale,
       'skipExitPage': options.skipExitPage,
+      'showFooter': options.showFooter,
       'theme': options.theme,
       'lightBackground': options.colors?.lightBackground,
       'lightOnBackground': options.colors?.lightOnBackground,

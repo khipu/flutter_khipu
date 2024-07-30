@@ -49,6 +49,10 @@ public class FlutterKhipuPlugin: NSObject, FlutterPlugin {
         if (args["skipExitPage"] is Bool) {
             optionsBuilder = optionsBuilder.skipExitPage(args["skipExitPage"]! as! Bool)
         }
+
+        if (args["showFooter"] is Bool) {
+            optionsBuilder = optionsBuilder.showFooter(args["showFooter"]! as! Bool)
+        }
         
         if (args["locale"] is String) {
             optionsBuilder = optionsBuilder.locale(args["locale"]! as! String)

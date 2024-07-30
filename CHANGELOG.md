@@ -1,3 +1,7 @@
+## 1.2.0
+
+Khipu clients for android and iOS bumped to 2.7.2
+
 ## 1.0.2
 
 Information about the sourceCompatibility and targetCompatibility options

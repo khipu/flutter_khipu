@@ -66,6 +66,10 @@ class FlutterKhipuPlugin : FlutterPlugin, MethodCallHandler, PluginRegistry.Acti
             optionsBuilder.skipExitPage = it
         }
 
+        call.argument<Boolean>("showFooter")?.let {
+            optionsBuilder.showFooter = it
+        }
+
         call.argument<String>("theme")?.let {
             if (it == "light") {
                 optionsBuilder.theme = KhipuOptions.Theme.LIGHT

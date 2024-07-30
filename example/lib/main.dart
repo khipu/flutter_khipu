@@ -36,7 +36,8 @@ class _MyAppState extends State<MyApp> {
           locale: 'es_CL',
           title: 'FlutterKhipu',
           skipExitPage: true,
-          theme: 'dark',
+          theme: 'light',
+          //showFooter: true,
           colors: KhipuColors(
               // darkBackground: '#00ff00',
               // darkPrimary: '#ff0000',

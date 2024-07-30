@@ -42,6 +42,7 @@ class KhipuStartOperationOptions {
   String? title;
   String? titleImageUrl;
   bool? skipExitPage;
+  bool? showFooter;
   String? theme;
   KhipuColors? colors;
 
@@ -50,6 +51,7 @@ class KhipuStartOperationOptions {
     this.title,
     this.titleImageUrl,
     this.skipExitPage,
+    this.showFooter,
     this.theme,
     this.colors});
 }
