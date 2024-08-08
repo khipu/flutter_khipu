@@ -46,14 +46,15 @@ class KhipuStartOperationOptions {
   String? theme;
   KhipuColors? colors;
 
-  KhipuStartOperationOptions({required this.operationId,
-    this.locale,
-    this.title,
-    this.titleImageUrl,
-    this.skipExitPage,
-    this.showFooter,
-    this.theme,
-    this.colors});
+  KhipuStartOperationOptions(
+      {required this.operationId,
+      this.locale,
+      this.title,
+      this.titleImageUrl,
+      this.skipExitPage,
+      this.showFooter,
+      this.theme,
+      this.colors});
 }
 
 class KhipuEvent {
@@ -83,14 +84,15 @@ class KhipuResult {
   String? continueUrl;
   Iterable<KhipuEvent>? events;
 
-  KhipuResult({this.operationId,
-    this.result,
-    this.exitTitle,
-    this.exitMessage,
-    this.exitUrl,
-    this.failureReason,
-    this.continueUrl,
-    this.events});
+  KhipuResult(
+      {this.operationId,
+      this.result,
+      this.exitTitle,
+      this.exitMessage,
+      this.exitUrl,
+      this.failureReason,
+      this.continueUrl,
+      this.events});
 
   static KhipuResult fromJson(Map<Object?, Object?> json) {
     var eventsJson = (json['events'] as List<Object?>);

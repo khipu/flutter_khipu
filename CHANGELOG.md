@@ -1,3 +1,7 @@
+## 1.4.0
+
+Added LGPL LICENCE
+
 ## 1.3.1
 
 Khipu clients for iOS bumped to 2.7.5
