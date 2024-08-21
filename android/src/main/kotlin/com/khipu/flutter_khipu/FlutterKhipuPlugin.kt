@@ -70,6 +70,14 @@ class FlutterKhipuPlugin : FlutterPlugin, MethodCallHandler, PluginRegistry.Acti
             optionsBuilder.showFooter = it
         }
 
+        call.argument<Boolean>("showMerchantLogo")?.let {
+            optionsBuilder.showMerchantLogo = it
+        }
+
+        call.argument<Boolean>("showPaymentDetails")?.let {
+            optionsBuilder.showPaymentDetails = it
+        }
+
         call.argument<String>("theme")?.let {
             if (it == "light") {
                 optionsBuilder.theme = KhipuOptions.Theme.LIGHT

@@ -17,27 +17,27 @@ public class FlutterKhipuPlugin: NSObject, FlutterPlugin {
         result(FlutterMethodNotImplemented)
     }
   }
-    
-    
+
+
     private func startOperation(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
         let keyWindow = UIApplication.shared.windows.first(where: { $0.isKeyWindow })
         guard let rootViewController = keyWindow?.rootViewController else {
             result(FlutterError(code: "NO_VIEW_CONTROLLER", message: "A view controller is needed to start Khipu", details: nil))
             return
         }
-        
+
         guard let args = call.arguments as? Dictionary<String, Any> else {
             result(FlutterError(code: "BAD_ARGUMENT_DICTIONARY", message: "The arguments parameter is not a Dictionary<String, Any>", details: nil))
             return
         }
-        
+
         guard let operationId = args["operationId"] as? String else {
             result(FlutterError(code: "MISSING_OPERATION_ID", message: "There is no operationId argument", details: nil))
             return
         }
-        
+
         var optionsBuilder = KhipuOptions.Builder()
-        
+
         if (args["title"] is String) {
             optionsBuilder = optionsBuilder.topBarTitle(args["title"]! as! String)
         }
@@ -45,7 +45,7 @@ public class FlutterKhipuPlugin: NSObject, FlutterPlugin {
         if (args["titleImageUrl"] is String) {
             optionsBuilder = optionsBuilder.topBarImageUrl(args["titleImageUrl"]! as! String)
         }
-        
+
         if (args["skipExitPage"] is Bool) {
             optionsBuilder = optionsBuilder.skipExitPage(args["skipExitPage"]! as! Bool)
         }
@@ -53,11 +53,19 @@ public class FlutterKhipuPlugin: NSObject, FlutterPlugin {
         if (args["showFooter"] is Bool) {
             optionsBuilder = optionsBuilder.showFooter(args["showFooter"]! as! Bool)
         }
-        
+
+        if (args["showMerchantLogo"] is Bool) {
+            optionsBuilder = optionsBuilder.showMerchantLogo(args["showMerchantLogo"]! as! Bool)
+        }
+
+        if (args["showPaymentDetails"] is Bool) {
+            optionsBuilder = optionsBuilder.showPaymentDetails(args["showPaymentDetails"]! as! Bool)
+        }
+
         if (args["locale"] is String) {
             optionsBuilder = optionsBuilder.locale(args["locale"]! as! String)
         }
-        
+
         if (args["theme"] is String) {
             let theme = args["theme"]! as! String
             if(theme == "light") {
@@ -68,9 +76,9 @@ public class FlutterKhipuPlugin: NSObject, FlutterPlugin {
                 optionsBuilder = optionsBuilder.theme(.system)
             }
         }
-        
+
         var colorsBuilder = KhipuColors.Builder()
-            
+
         if (args["lightBackground"] is String) {
             colorsBuilder = colorsBuilder.lightBackground(args["lightBackground"]! as! String)
         }
@@ -107,9 +115,9 @@ public class FlutterKhipuPlugin: NSObject, FlutterPlugin {
         if (args["darkOnTopBarContainer"] is String) {
             colorsBuilder = colorsBuilder.darkOnTopBarContainer(args["darkOnTopBarContainer"]! as! String)
         }
-        
+
         optionsBuilder = optionsBuilder.colors(colorsBuilder.build())
-        
+
         DispatchQueue.main.async {
             KhipuLauncher.launch(presenter: rootViewController,
                                  operationId: operationId,
@@ -131,8 +139,8 @@ public class FlutterKhipuPlugin: NSObject, FlutterPlugin {
                     })
                 ])
             }
-            
-            
+
+
         }
     }
 }
