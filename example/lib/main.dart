@@ -38,6 +38,8 @@ class _MyAppState extends State<MyApp> {
           skipExitPage: true,
           theme: 'light',
           //showFooter: true,
+          //showMerchantLogo: true,
+          //showPaymentDetails: true,
           colors: KhipuColors(
               // darkBackground: '#00ff00',
               // darkPrimary: '#ff0000',

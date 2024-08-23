@@ -21,6 +21,8 @@ class MethodChannelFlutterKhipu extends FlutterKhipuPlatform {
       'locale': options.locale,
       'skipExitPage': options.skipExitPage,
       'showFooter': options.showFooter,
+      'showMerchantLogo': options.showMerchantLogo,
+      'showPaymentDetails': options.showPaymentDetails,
       'theme': options.theme,
       'lightBackground': options.colors?.lightBackground,
       'lightOnBackground': options.colors?.lightOnBackground,

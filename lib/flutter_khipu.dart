@@ -43,6 +43,8 @@ class KhipuStartOperationOptions {
   String? titleImageUrl;
   bool? skipExitPage;
   bool? showFooter;
+  bool? showMerchantLogo;
+  bool? showPaymentDetails;
   String? theme;
   KhipuColors? colors;
 
@@ -53,6 +55,8 @@ class KhipuStartOperationOptions {
       this.titleImageUrl,
       this.skipExitPage,
       this.showFooter,
+      this.showMerchantLogo,
+      this.showPaymentDetails,
       this.theme,
       this.colors});
 }
