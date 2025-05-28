@@ -50,7 +50,7 @@ android {
     }
 
     dependencies {
-        implementation 'com.khipu:khipu-client-android:2.16.0'
+        implementation 'com.khipu:khipu-client-android:2.16.1'
         testImplementation("org.jetbrains.kotlin:kotlin-test")
         testImplementation("org.mockito:mockito-core:5.0.0")
     }
