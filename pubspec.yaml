@@ -1,6 +1,6 @@
 name: flutter_khipu
 description: "Flutter plugin for Khipu, this plugin enables a flutter app to use Khipu to authorize payments."
-version: 1.5.6
+version: 1.5.7
 homepage: "https://github.com/khipu/flutter_khipu"
 
 environment:

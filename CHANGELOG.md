@@ -1,3 +1,7 @@
+## 1.5.7
+
+Khipu clients for iOS bumped to 2.11.0, compatible with XCode 26
+
 ## 1.5.6
 
 Khipu clients for iOS bumped to 2.10.1 and Android bumped to 2.18.0
