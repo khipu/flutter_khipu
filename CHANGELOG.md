@@ -1,3 +1,7 @@
+# 1.5.9
+
+Khipu clients for iOS bumped to 2.12.1
+
 ## 1.5.8
 
 Khipu clients for iOS bumped to 2.12.0 and Android bumped to 2.19.0
