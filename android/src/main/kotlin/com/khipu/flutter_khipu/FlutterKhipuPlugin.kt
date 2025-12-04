@@ -2,6 +2,7 @@ package com.khipu.flutter_khipu
 
 import android.app.Activity
 import android.content.Intent
+import android.util.Log
 import com.khipu.client.KHIPU_RESULT_EXTRA
 import com.khipu.client.KhipuColors
 import com.khipu.client.KhipuOptions
@@ -22,7 +23,7 @@ class FlutterKhipuPlugin : FlutterPlugin, MethodCallHandler, PluginRegistry.Acti
 
     private lateinit var channel: MethodChannel
     private var activity: Activity? = null
-    private lateinit var result: Result
+    private var pendingResult: Result? = null
     private val KHIPU_START_OPERATION_CODE = 101010
 
     override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
@@ -39,7 +40,7 @@ class FlutterKhipuPlugin : FlutterPlugin, MethodCallHandler, PluginRegistry.Acti
     }
 
     fun startOperation(call: MethodCall, result: Result) {
-        this.result = result
+        this.pendingResult = result
 
         if (!call.hasArgument("operationId")) {
             result.error("MISSING_OPERATION_ID", "OperationId is required", null)
@@ -143,6 +144,11 @@ class FlutterKhipuPlugin : FlutterPlugin, MethodCallHandler, PluginRegistry.Acti
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?): Boolean {
         if (requestCode == KHIPU_START_OPERATION_CODE) {
+            val result = pendingResult
+            if (result == null) {
+                Log.e("FlutterKhipuPlugin", "Result callback invoked but pendingResult not initialized")
+                return false
+            }
             if (data != null) {
                 val khipuResult = data.getSerializableExtra(KHIPU_RESULT_EXTRA) as KhipuResult
 
