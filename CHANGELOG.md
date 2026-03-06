@@ -1,3 +1,7 @@
+# 1.5.13
+
+Khipu clients for iOS bumped to 2.14.0 and Android bumped to 2.25.0
+
 # 1.5.12
 
 MethodChannel.Result can sometimes be null, this version fixes that
