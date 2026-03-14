@@ -1,3 +1,7 @@
+# 1.6.0
+
+add skipExitSuccessPage option and update Khipu SDK dependencies (Android 2.26.0, iOS 2.16.0)
+
 # 1.5.13
 
 Khipu clients for iOS bumped to 2.14.0 and Android bumped to 2.25.0

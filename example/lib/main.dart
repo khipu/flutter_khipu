@@ -32,10 +32,11 @@ class _MyAppState extends State<MyApp> {
     // We also handle the message potentially returning null.
     try {
       KhipuStartOperationOptions options = KhipuStartOperationOptions(
-          operationId: 'mxitm6yzdjwl',
+          operationId: 'z9clsen4t7ik',
           locale: 'es_CL',
           title: 'FlutterKhipu',
-          skipExitPage: true,
+          skipExitPage: false,
+          skipExitSuccessPage: true,
           theme: 'light',
           //showFooter: true,
           //showMerchantLogo: true,

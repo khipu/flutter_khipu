@@ -50,6 +50,10 @@ public class FlutterKhipuPlugin: NSObject, FlutterPlugin {
             optionsBuilder = optionsBuilder.skipExitPage(args["skipExitPage"]! as! Bool)
         }
 
+        if (args["skipExitSuccessPage"] is Bool) {
+            optionsBuilder = optionsBuilder.skipExitSuccessPage(args["skipExitSuccessPage"]! as! Bool)
+        }
+
         if (args["showFooter"] is Bool) {
             optionsBuilder = optionsBuilder.showFooter(args["showFooter"]! as! Bool)
         }

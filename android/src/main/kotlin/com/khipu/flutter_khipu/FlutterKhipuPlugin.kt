@@ -67,6 +67,10 @@ class FlutterKhipuPlugin : FlutterPlugin, MethodCallHandler, PluginRegistry.Acti
             optionsBuilder.skipExitPage = it
         }
 
+        call.argument<Boolean>("skipExitSuccessPage")?.let {
+            optionsBuilder.skipExitSuccessPage = it
+        }
+
         call.argument<Boolean>("showFooter")?.let {
             optionsBuilder.showFooter = it
         }

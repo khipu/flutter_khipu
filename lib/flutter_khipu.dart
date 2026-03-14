@@ -42,6 +42,7 @@ class KhipuStartOperationOptions {
   String? title;
   String? titleImageUrl;
   bool? skipExitPage;
+  bool? skipExitSuccessPage;
   bool? showFooter;
   bool? showMerchantLogo;
   bool? showPaymentDetails;
@@ -54,6 +55,7 @@ class KhipuStartOperationOptions {
       this.title,
       this.titleImageUrl,
       this.skipExitPage,
+      this.skipExitSuccessPage,
       this.showFooter,
       this.showMerchantLogo,
       this.showPaymentDetails,
