@@ -1,6 +1,6 @@
 # flutter_khipu
 
-A new Flutter plugin project.
+Flutter plugin for Khipu, this plugin enables a flutter app to use Khipu to authorize payments.
 
 ## Installing the plugin
 
@@ -98,6 +98,29 @@ plugins {
 }
 ```
 
+#### Opening banking apps
+
+Khipu's `openApp` feature sends the payer to their banking app to authorize the payment. Starting
+with Android 11 (API 30), an app must declare which packages it queries up front, so add a
+`<queries>` block to `android/app/src/main/AndroidManifest.xml`, as a child of `<manifest>`.
+Without it, the app can't detect or launch the banking app. For Chile:
+
+```xml
+<queries>
+    <package android:name="cl.bci.pass" />
+    <package android:name="cl.bancochile.mi_pass2" />
+    <package android:name="net.veritran.becl.prod" />
+    <package android:name="cl.scotiabank.go" />
+    <package android:name="cl.santander.santanderpasschile" />
+    <package android:name="com.konylabs.ItauMobileBank" />
+    <package android:name="cl.bancosecurity.securitypass" />
+    <package android:name="cl.bice.bicepassmobile2" />
+    <package android:name="cl.consorcio.tupass" />
+</queries>
+```
+
+See `example/android/app/src/main/AndroidManifest.xml` for a working copy.
+
 ## Usage
 
 
@@ -135,16 +158,16 @@ KhipuResult? result =
 
 The `KhipuResult` object will contain the following fields.
 
-- operationId : String The unique identifier for the payment intent.
-- exitTitle : String Title that will be displayed to the user on the exit screen, reflecting the outcome of the operation.
-- exitMessage : String Message that will be displayed to the user, providing additional details about the outcome of the operation.
-- exitUrl : String URL to which the application will return at the end of the process.
-- result : String General outcome of the operation, possible values are:
+- operationId : String? (Optional) The unique identifier for the payment intent.
+- exitTitle : String? (Optional) Title that will be displayed to the user on the exit screen, reflecting the outcome of the operation.
+- exitMessage : String? (Optional) Message that will be displayed to the user, providing additional details about the outcome of the operation.
+- exitUrl : String? (Optional) URL to which the application will return at the end of the process.
+- result : String? (Optional) General outcome of the operation, possible values are:
   - OK : Success
   - ERROR : Error
   - WARNING : Warnings
   - CONTINUE : Operation needs more steps
-- failureReason : String (Optional) Describes the reason for the failure, if the operation was not successful.
-- continueUrl : String (Optional) Available only when the result is "CONTINUE", indicating the URL to follow to continue the operation.
-- events : Array The steps taken to generate the payment, with their timestamps.
+- failureReason : String? (Optional) Describes the reason for the failure, if the operation was not successful.
+- continueUrl : String? (Optional) Available only when the result is "CONTINUE", indicating the URL to follow to continue the operation.
+- events : Array (Optional) The steps taken to generate the payment, with their timestamps.
 
