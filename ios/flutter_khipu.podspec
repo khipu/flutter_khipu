@@ -15,7 +15,7 @@ Flutter plugin for Khipu, this plugin enables a flutter app to use Khipu to auth
   s.source           = { :path => '.' }
   s.source_files = 'flutter_khipu/Sources/flutter_khipu/**/*.swift'
   s.dependency 'Flutter'
-  s.dependency 'KhipuClientIOS', '2.16.4'
+  s.dependency 'KhipuClientIOS', '2.16.5'
   s.platform = :ios, '13.0'
 
   # Flutter.framework does not contain a i386 slice.

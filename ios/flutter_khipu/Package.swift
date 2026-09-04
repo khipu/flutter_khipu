@@ -12,7 +12,7 @@ let package = Package(
         .library(name: "flutter-khipu", targets: ["flutter_khipu"])
     ],
     dependencies: [
-        .package(url: "https://github.com/khipu/KhipuClientIOS.git", exact: "2.16.4")
+        .package(url: "https://github.com/khipu/KhipuClientIOS.git", exact: "2.16.5")
     ],
     targets: [
         .target(
