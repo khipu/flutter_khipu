@@ -2,13 +2,15 @@ PODS:
   - Flutter (1.0.0)
   - flutter_khipu (0.0.1):
     - Flutter
-    - KhipuClientIOS (= 2.16.2)
-  - KhenshinProtocol (1.0.59)
-  - KhenshinSecureMessage (1.4.0):
+    - KhipuClientIOS (= 2.16.4)
+  - integration_test (0.0.1):
+    - Flutter
+  - KhenshinProtocol (1.0.60)
+  - KhenshinSecureMessage (1.4.1):
     - KHTweetNaclSwift (= 1.1.0)
-  - KhipuClientIOS (2.16.2):
-    - KhenshinProtocol (= 1.0.59)
-    - KhenshinSecureMessage (= 1.4.0)
+  - KhipuClientIOS (2.16.4):
+    - KhenshinProtocol (= 1.0.60)
+    - KhenshinSecureMessage (= 1.4.1)
     - Socket.IO-Client-Swift (= 16.1.1)
     - Starscream (= 4.0.8)
   - KHTweetNaclSwift (1.1.0)
@@ -19,6 +21,7 @@ PODS:
 DEPENDENCIES:
   - Flutter (from `Flutter`)
   - flutter_khipu (from `.symlinks/plugins/flutter_khipu/ios`)
+  - integration_test (from `.symlinks/plugins/integration_test/ios`)
 
 SPEC REPOS:
   trunk:
@@ -34,17 +37,20 @@ EXTERNAL SOURCES:
     :path: Flutter
   flutter_khipu:
     :path: ".symlinks/plugins/flutter_khipu/ios"
+  integration_test:
+    :path: ".symlinks/plugins/integration_test/ios"
 
 SPEC CHECKSUMS:
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
-  flutter_khipu: 92e6297a002bd80fd5aec16c89bae5e64fa21132
-  KhenshinProtocol: 644743f1d2f1411834a2d83e0ad8ae79d9d5ec8c
-  KhenshinSecureMessage: 5133da5475029033d0309d1720acb732ce3c6ffd
-  KhipuClientIOS: 3648b46e5fd767d595c94710dd5a5ff886e3dde3
+  flutter_khipu: 2002d3f6b3c2c69517767aa42a991aba1510c46e
+  integration_test: 252f60fa39af5e17c3aa9899d35d908a0721b573
+  KhenshinProtocol: fe4df3e2969f83661037a0253cb17037688b3572
+  KhenshinSecureMessage: bbe01fe234362bb2400114912334f4de59fb7170
+  KhipuClientIOS: 7590708e9a25e366ba5ef80d7c816c8343f67b6a
   KHTweetNaclSwift: 1a09d2967f9ecbd8d6176b30a96e1e280c1f1d90
   Socket.IO-Client-Swift: 3614bea82ba005df1c2ff01154f4004993e05ad7
   Starscream: 19b5533ddb925208db698f0ac508a100b884a1b9
 
-PODFILE CHECKSUM: 9c46fd01abff66081b39f5fa5767b3f1d0b11d76
+PODFILE CHECKSUM: a57f30d18f102dd3ce366b1d62a55ecbef2158e5
 
 COCOAPODS: 1.16.2
