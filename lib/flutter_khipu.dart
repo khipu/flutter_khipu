@@ -74,9 +74,9 @@ class KhipuEvent {
     var map = json as Map;
 
     return KhipuEvent(
-        name: map['name'] as String,
-        type: map['type'] as String,
-        timestamp: map['timestamp'] as String);
+        name: map['name'] as String?,
+        type: map['type'] as String?,
+        timestamp: map['timestamp'] as String?);
   }
 }
 
@@ -105,11 +105,11 @@ class KhipuResult {
     var events = eventsJson.map((event) => KhipuEvent.fromJson(event));
 
     return KhipuResult(
-        operationId: json['operationId'] as String,
-        result: json['result'] as String,
-        exitTitle: json['exitTitle'] as String,
-        exitMessage: json['exitMessage'] as String,
-        exitUrl: json['exitUrl'] as String,
+        operationId: json['operationId'] as String?,
+        result: json['result'] as String?,
+        exitTitle: json['exitTitle'] as String?,
+        exitMessage: json['exitMessage'] as String?,
+        exitUrl: json['exitUrl'] as String?,
         failureReason: json['failureReason'] as String?,
         continueUrl: json['continueUrl'] as String?,
         events: events);
