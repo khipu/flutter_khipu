@@ -63,6 +63,15 @@ class _DemoPageState extends State<DemoPage> {
         return;
       }
       setState(() => _error = '${exception.code}: ${exception.message}');
+    } catch (exception) {
+      // Anything that isn't a PlatformException — a MissingPluginException, a
+      // parse TypeError, etc. — should still surface here. Left uncaught, the
+      // demo would sit at "Nothing yet", indistinguishable from never having
+      // pressed the button.
+      if (!mounted) {
+        return;
+      }
+      setState(() => _error = '${exception.runtimeType}: $exception');
     } finally {
       if (mounted) {
         setState(() => _running = false);
