@@ -22,6 +22,18 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>bancochilemipass2</string>
+		<string>BciPassApp</string>
+		<string>BICEPassApp</string>
+		<string>scotiabankgo</string>
+		<string>SantanderPassApp</string>
+		<string>tupass</string>
+		<string>bancoestado</string>
+		<string>itau.cl</string>
+		<string>SecurityPass</string>
+	</array>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

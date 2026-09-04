@@ -663,6 +663,30 @@ Then delete `ios/Podfile`, `ios/Podfile.lock`, `ios/Pods/`, and any `#include` l
 CocoaPods in `ios/Flutter/Debug.xcconfig` and `ios/Flutter/Release.xcconfig`.
 ```
 
+#### Opening banking apps
+
+Khipu's `openApp` feature sends the payer to their banking app to authorize the payment. iOS only
+lets an app open another one if it declares the schemes up front, so add `LSApplicationQueriesSchemes`
+to `ios/Runner/Info.plist`. Without it, iOS refuses to open the banking app. For Chile:
+
+```xml
+<key>LSApplicationQueriesSchemes</key>
+<array>
+  <string>bancochilemipass2</string>
+  <string>BciPassApp</string>
+  <string>BICEPassApp</string>
+  <string>scotiabankgo</string>
+  <string>SantanderPassApp</string>
+  <string>tupass</string>
+  <string>bancoestado</string>
+  <string>itau.cl</string>
+  <string>SecurityPass</string>
+</array>
+```
+
+See `example/ios/Runner/Info.plist` for a working copy.
+```
+
 - [ ] **Step 4: Verificar que el paquete queda publicable**
 
 ```bash
