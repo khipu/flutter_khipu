@@ -39,6 +39,23 @@ de test acá es otro, y cada tarea lo trae explícito:
 | `flutter run` en `example/` | el plugin compila y enlaza en una app real, por cada camino |
 | lanzar un pago en el example | los recursos de Khipu llegan a la app (el único test de runtime) |
 
+**Advertencia sobre `--no-codesign`.** Para verificar que algo *compila y enlaza* es correcto usar
+`flutter build ios --simulator --no-codesign`, y es lo que permite automatizar los pasos que de otro
+modo exigirían el `flutter run` interactivo. Pero **nunca para la validación de runtime**: esa
+bandera produce una firma *linker-signed* (`flags 0x20002`) que deja al proceso sin acceso al
+Keychain, y entonces cualquier llamada a `SecItem*` devuelve `-34018`
+(`errSecMissingEntitlement`). Medido con una sonda en la app:
+
+| Build | Firma | `SecItemDelete` / `SecItemAdd` |
+|---|---|---|
+| `--simulator --no-codesign` | `0x20002` adhoc, linker-signed | `-34018` / `-34018` |
+| `--simulator` | `0x2` adhoc | `-25300` / `0` |
+
+No es la sección de entitlements —el build que funciona tampoco la tiene— sino el tipo de firma.
+Esto importa porque el flujo de pago de Khipu toca el Keychain al recordar credenciales, así que un
+build con `--no-codesign` crashea ahí por una razón que no tiene nada que ver con lo que se está
+validando. **El paso 4 usa un build sin `--no-codesign`.**
+
 **Línea base ya medida en la rama, antes de cualquier cambio:**
 `pod lib lint ios/flutter_khipu.podspec --configuration=Debug --skip-tests --use-modular-headers --allow-warnings`
 → `flutter_khipu passed validation.`
