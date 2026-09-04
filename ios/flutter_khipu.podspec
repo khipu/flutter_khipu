@@ -5,18 +5,18 @@
 Pod::Spec.new do |s|
   s.name             = 'flutter_khipu'
   s.version          = '0.0.1'
-  s.summary          = 'A new Flutter plugin project.'
+  s.summary          = 'Flutter plugin for Khipu payments.'
   s.description      = <<-DESC
-A new Flutter plugin project.
+Flutter plugin for Khipu, this plugin enables a flutter app to use Khipu to authorize payments.
                        DESC
-  s.homepage         = 'http://example.com'
+  s.homepage         = 'https://github.com/khipu/flutter_khipu'
   s.license          = { :file => '../LICENSE' }
-  s.author           = { 'Your Company' => 'email@example.com' }
+  s.author           = { 'Khipu' => 'developers@khipu.com' }
   s.source           = { :path => '.' }
-  s.source_files = 'Classes/**/*'
+  s.source_files = 'flutter_khipu/Sources/flutter_khipu/**/*.swift'
   s.dependency 'Flutter'
-  s.dependency 'KhipuClientIOS', '2.16.2'
-  s.platform = :ios, '12.0'
+  s.dependency 'KhipuClientIOS', '2.16.4'
+  s.platform = :ios, '13.0'
 
   # Flutter.framework does not contain a i386 slice.
   s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES', 'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'i386' }
