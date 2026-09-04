@@ -100,10 +100,8 @@ flutter pub get
 flutter run -d 93EFD59E-34E4-4C5B-BF4F-18425C6F561E
 ```
 
-Esperado: la app compila, se instala y arranca. Como `main.dart` llama a `startOperation` en
-`initState`, se abre de inmediato la UI de Khipu (con un `operationId` vencido mostrará una pantalla
-de error — eso está bien, lo que se está midiendo es que compila y enlaza). Anotar el resultado.
-Salir con `q`.
+Esperado: la app compila, se instala y arranca mostrando el formulario de opciones. No hace falta
+lanzar un pago: lo que se está midiendo es que compila y enlaza. Anotar el resultado. Salir con `q`.
 
 - [ ] **Step 4: Actualizar el SDK de Flutter a 3.44.9**
 
@@ -439,7 +437,6 @@ Package Manager explicitly disabled."
 
 **Files:**
 - Modify (por el tool, se commitea): `example/ios/Runner.xcodeproj/project.pbxproj`, `example/ios/Runner.xcodeproj/xcshareddata/xcschemes/Runner.xcscheme`
-- Modify (local, **no** se commitea): `example/lib/main.dart`
 
 **Interfaces:**
 - Consumes: el plugin con `Package.swift` (Task 2) y el example alineado (Task 3).
@@ -471,19 +468,16 @@ Esperado: el `Package.swift` generado declara una dependencia hacia `flutter_khi
 `flutter-khipu`; los dos `grep` devuelven un número mayor que `0`. Eso confirma que el tool integró el
 paquete y agregó la pre-acción al scheme.
 
-- [ ] **Step 3: Preparar el `operationId` para la prueba de runtime**
+- [ ] **Step 3: Configurar la corrida desde el formulario del example**
 
-`example/lib/main.dart:35` tiene `operationId: 'z9clsen4t7ik'` hardcodeado y ya consumido. Crear una
-intención de pago nueva con una cuenta en **modo desarrollador** y reemplazar ese valor. En la misma
-edición, descomentar `showFooter: true` (línea ~41) para que se renderice el footer con el PNG
-`logo-khipu-color`, que es justamente uno de los recursos que se quiere ver en pantalla.
+Ya no hay que editar código: el example expone todas las opciones en pantalla. En la app corriendo:
 
-```bash
-cd /Users/edavis/git/flutter_khipu
-grep -n "operationId:\|showFooter" example/lib/main.dart
-```
+1. Crear una intención de pago con una cuenta en **modo desarrollador** y pegar su `operationId` en el campo de la sección *Operation*. Es de un solo uso, así que hace falta uno nuevo por cada corrida.
+2. En *Behaviour*, dejar **`showFooter` encendido** — es lo que renderiza el footer con el PNG `logo-khipu-color`, uno de los recursos que se quiere ver en pantalla.
+3. En *Colors*, elegir el preset **Khipu**, para que además se ejerciten los 12 colores.
+4. En *Theme and locale*, dejar `theme` en `light` y `locale` en `es_CL`.
 
-Esta edición es **solo local**: se revierte en el Step 5 y no se commitea.
+Nada de esto toca archivos, así que no hay nada que revertir después.
 
 - [ ] **Step 4: La prueba de runtime**
 
@@ -504,11 +498,10 @@ copie el resource bundle dentro de la app.
 Si algo no se renderiza, **detenerse y reportar**: sería un problema de empaquetado de recursos
 upstream, no algo parcheable desde este plugin.
 
-- [ ] **Step 5: Revertir la edición de prueba y commitear solo la migración del proyecto**
+- [ ] **Step 5: Commitear solo la migración del proyecto Xcode**
 
 ```bash
 cd /Users/edavis/git/flutter_khipu
-git checkout example/lib/main.dart
 git status --short
 git add example/ios/Runner.xcodeproj/project.pbxproj \
         example/ios/Runner.xcodeproj/xcshareddata/xcschemes/Runner.xcscheme
@@ -527,7 +520,7 @@ Verified at runtime — fonts, theme colors and both loose PNGs render inside
 a real Flutter app built through SPM."
 ```
 
-Esperado: `git status --short` no debe listar `example/lib/main.dart` después del `checkout`.
+Esperado: `git status --short` solo debe listar los dos archivos del proyecto Xcode.
 
 ---
 
