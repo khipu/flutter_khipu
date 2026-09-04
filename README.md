@@ -20,7 +20,45 @@ flutter pub get
 
 ### iOS
 
-At this moment there is no need for special setup for iOS development
+This plugin requires **iOS 13.0 or later**. Make sure your app's deployment target is at least
+`13.0`, both in the Xcode project and in `ios/Podfile` if you have one.
+
+The plugin ships support for both **Swift Package Manager** and **CocoaPods**, so no extra setup
+is needed either way — Flutter picks the one your project uses.
+
+Swift Package Manager is the default from Flutter 3.44 onwards. If every plugin in your app
+supports it, you can remove CocoaPods from your project entirely:
+
+```bash
+cd ios
+pod deintegrate
+```
+
+Then delete `ios/Podfile`, `ios/Podfile.lock`, `ios/Pods/`, and any `#include` lines referencing
+CocoaPods in `ios/Flutter/Debug.xcconfig` and `ios/Flutter/Release.xcconfig`.
+
+#### Opening banking apps
+
+Khipu's `openApp` feature sends the payer to their banking app to authorize the payment. iOS only
+lets an app open another one if it declares the schemes up front, so add `LSApplicationQueriesSchemes`
+to `ios/Runner/Info.plist`. Without it, iOS refuses to open the banking app. For Chile:
+
+```xml
+<key>LSApplicationQueriesSchemes</key>
+<array>
+  <string>bancochilemipass2</string>
+  <string>BciPassApp</string>
+  <string>BICEPassApp</string>
+  <string>scotiabankgo</string>
+  <string>SantanderPassApp</string>
+  <string>tupass</string>
+  <string>bancoestado</string>
+  <string>itau.cl</string>
+  <string>SecurityPass</string>
+</array>
+```
+
+See `example/ios/Runner/Info.plist` for a working copy.
 
 ### Android
 
