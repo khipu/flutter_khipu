@@ -19,9 +19,34 @@ public class FlutterKhipuPlugin: NSObject, FlutterPlugin {
   }
 
 
+    /// The view controller Khipu should be presented from.
+    ///
+    /// Goes through the window scene rather than `UIApplication.windows`, which is
+    /// deprecated since iOS 15 and returns windows across every connected scene.
+    /// Then walks up any presented controllers: UIKit refuses to present on a
+    /// controller that is already presenting, which is what a merchant hits when
+    /// launching Khipu from behind one of their own modals.
+    ///
+    /// Kept private to this type rather than exposed as a `UIViewController`
+    /// extension, so a merchant's own `topMostViewController` cannot collide with
+    /// it once the plugin is statically linked into their app.
+    private static func presenter() -> UIViewController? {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        guard let scene = scenes.first(where: { $0.activationState == .foregroundActive }) ?? scenes.first,
+              let window = scene.windows.first(where: { $0.isKeyWindow }) ?? scene.windows.first
+        else {
+            return nil
+        }
+
+        var controller = window.rootViewController
+        while let presented = controller?.presentedViewController {
+            controller = presented
+        }
+        return controller
+    }
+
     private func startOperation(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
-        let keyWindow = UIApplication.shared.windows.first(where: { $0.isKeyWindow })
-        guard let rootViewController = keyWindow?.rootViewController else {
+        guard let rootViewController = FlutterKhipuPlugin.presenter() else {
             result(FlutterError(code: "NO_VIEW_CONTROLLER", message: "A view controller is needed to start Khipu", details: nil))
             return
         }
