@@ -72,6 +72,26 @@ definitivos del plugin y `exact: "2.16.4"`): resuelve correctamente en 6 paquete
 **`ViewInspector` no se descarga**: SPM poda las dependencias usadas solo por test targets de
 paquetes no-raíz, así que las deps de testing de upstream no contaminan al consumidor.
 
+**Validación de recursos ejecutada** (paquete SPM consumidor de `KhipuClientIOS 2.16.4` + XCTest en
+simulador iOS 18.1, 6/6 tests verdes). El bundle generado es
+`KhipuClientIOS_KhipuClientIOS.bundle`, resuelto vía `Bundle.module`, y **`.process("Assets")` aplana
+la jerarquía**: los subdirectorios `Images/`, `Fonts/`, `HTML/` y `Resources/` desaparecen y todo
+queda en la raíz del bundle:
+
+```
+[Assets.car, Info.plist, PublicSans-{Bold,Medium,Regular,SemiBold}.ttf,
+ authorize.png, khipuClient.html, logo-khipu-color.png]
+
+logo-khipu-color -> OK (45.0, 15.0)     authorize        -> OK (400.0, 400.0)
+PublicSans-Bold  -> OK (registrada)     khipuClient.html -> OK
+```
+
+Esto **descarta la hipótesis de los PNG sueltos** que el spec de `KhipuClientIOS` §5 dejó como riesgo
+abierto: la raíz del bundle es exactamente donde `UIImage(named:in:)`,
+`Bundle.url(forResource:withExtension:)` y `CTFontManagerRegisterFontsForURL` buscan. No se requiere
+ninguna versión nueva de `KhipuClientIOS`, ni mover los PNG a un `Images.xcassets`. `FontLoader` ya
+está migrado a `Bundle.module` bajo `#if SWIFT_PACKAGE`.
+
 ## 3. Decisiones confirmadas
 
 1. **Dual CocoaPods + SPM.** El podspec se mantiene funcional.
@@ -238,10 +258,11 @@ CocoaPods hay que forzarlo explícitamente.
 3. **SPM** — `flutter config --enable-swift-package-manager` (obligatorio acá: el paso 1 lo apagó
    globalmente), `cd example && flutter run`. Confirmar en Xcode: `Package Dependencies` presente y
    `FlutterGeneratedPluginSwiftPackage` como dependencia del target `Runner`.
-4. **Runtime real bajo SPM — el paso que más importa.** Lanzar un pago y confirmar que la UI de Khipu
-   renderiza fuentes, colores e imágenes. Valida `Bundle.module` de punta a punta y cierra el paso
-   `8.4` que el spec de `KhipuClientIOS` dejó pendiente (*"Consumidor SPM iOS real desde el tag
-   2.16.3"*). Los pasos 1-3 solo prueban que compila; **este prueba que funciona**.
+4. **Runtime real bajo SPM.** Lanzar un pago y confirmar que la UI de Khipu renderiza fuentes,
+   colores e imágenes. Los pasos 1-3 solo prueban que compila; **este prueba que funciona**. Cierra
+   el paso `8.4` que el spec de `KhipuClientIOS` dejó pendiente (*"Consumidor SPM iOS real desde el
+   tag 2.16.3"*). Tras la validación de recursos de §2 esto es una **confirmación**, no una sospecha:
+   lo único que queda por verificar es que Xcode copie el resource bundle dentro de la app.
 5. **Sin CocoaPods** — `cd example/ios && pod deintegrate`; borrar `Podfile`, `Podfile.lock`, `Pods/`,
    `.symlinks/`; quitar los `#include` de CocoaPods en `Flutter/Debug.xcconfig` y
    `Flutter/Release.xcconfig`; `flutter clean && flutter run`. **Revertir con `git checkout` al
@@ -253,7 +274,7 @@ CocoaPods hay que forzarlo explícitamente.
 
 | Riesgo | Nivel | Mitigación |
 |---|---|---|
-| PNGs sueltos (`logo-khipu-color`, `authorize`) que no resuelvan con `UIImage(named:in:)` bajo `.process` | **Medio** — riesgo abierto y reconocido en el spec de `KhipuClientIOS` §5. `2.16.4` salió 2 h después de `2.16.3` el mismo día y **se sospecha** que es ese fix, pero **no está confirmado** | El paso 4 del gate lo detecta. Si falla, la corrección es upstream (mover los PNG a un `Images.xcassets`), no parcheable desde el plugin |
+| Que el resource bundle de `KhipuClientIOS` no se copie dentro de la app Flutter con enlazado estático vía `FlutterGeneratedPluginSwiftPackage` | **Bajo** | La hipótesis de los PNG sueltos quedó **descartada empíricamente** (§2): los recursos se resuelven bien en un consumidor SPM real. Lo que resta es que Xcode copie el bundle, camino rutinario de su integración SPM. El paso 4 del gate lo confirma |
 | Un comercio que declare `KhipuClientIOS` directo vía SPM con `from:` entrará en conflicto duro con nuestro `exact:` | Conocido y aceptado | Consecuencia deliberada de la política de §3.3: la resolución es liberar la versión del plugin que corresponda |
 | El salto de SDK 3.38.4 → 3.44.9 rompa algo del lado Dart (`flutter_lints: ^3.0.0` quedó viejo) | Bajo | Paso 6 del gate. Si `flutter analyze` se queja, bumpear `flutter_lints` es un cambio aparte y acotado |
 | `RunnerTests` pierde sus `search_paths` al deintegrar pods | Bajo | Solo afecta el paso 5, que es desechable |
