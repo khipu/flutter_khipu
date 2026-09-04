@@ -1,3 +1,17 @@
+# 1.7.1
+
+Fixes how the plugin finds the view controller to present Khipu from on iOS. It used
+`UIApplication.windows`, deprecated since iOS 15, which reports windows across every
+connected scene; it now goes through the foreground-active window scene instead.
+
+It also no longer presents from the root view controller unconditionally. If your app is
+already presenting something of its own when you call `startOperation`, UIKit rejects
+presenting on top of it and Khipu never appears. The plugin now walks up to whatever is
+actually presented. Measured against real UIKit: with a modal on screen the old code
+returned a controller that was already presenting, while the new code returns the modal.
+
+Nothing changes when no modal is present — both resolve to the same controller.
+
 # 1.7.0
 
 iOS now supports Swift Package Manager alongside CocoaPods, so an app whose every plugin supports
