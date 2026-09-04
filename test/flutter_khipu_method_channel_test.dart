@@ -5,16 +5,20 @@ import 'package:flutter_khipu/flutter_khipu_method_channel.dart';
 
 /// A result payload shaped like the one the native side sends back.
 Map<String, Object?> nativeResult({
+  String? operationId = 'abc123',
+  String? result = 'OK',
+  String? exitTitle = 'Listo',
+  String? exitMessage = 'Pago realizado',
   String? exitUrl = 'https://khipu.com/done',
   String? failureReason,
   String? continueUrl,
   List<Object?>? events,
 }) {
   return <String, Object?>{
-    'operationId': 'abc123',
-    'result': 'OK',
-    'exitTitle': 'Listo',
-    'exitMessage': 'Pago realizado',
+    'operationId': operationId,
+    'result': result,
+    'exitTitle': exitTitle,
+    'exitMessage': exitMessage,
     'exitUrl': exitUrl,
     'failureReason': failureReason,
     'continueUrl': continueUrl,
@@ -289,6 +293,69 @@ void main() {
       );
 
       expect(result!.exitUrl, isNull);
+    });
+
+    test('treats a missing events key as no events', () async {
+      // `events` is declared `Iterable<KhipuEvent>?`, so an absent key must
+      // yield null rather than throwing on a non-null List cast.
+      respond = (MethodCall _) => nativeResult()..remove('events');
+
+      final KhipuResult? result = await platform.startOperation(
+        KhipuStartOperationOptions(operationId: 'abc123'),
+      );
+
+      expect(result!.events, isNull);
+    });
+
+    test('treats an explicit null events value as no events', () async {
+      respond = (MethodCall _) {
+        final Map<String, Object?> map = nativeResult();
+        map['events'] = null;
+        return map;
+      };
+
+      final KhipuResult? result = await platform.startOperation(
+        KhipuStartOperationOptions(operationId: 'abc123'),
+      );
+
+      expect(result!.events, isNull);
+    });
+
+    test('returns null when the native side sends a null reply', () async {
+      // The method's signature promises Future<KhipuResult?>, so a null
+      // channel reply must come back as null rather than throwing while
+      // parsing it as a Map.
+      respond = (MethodCall _) => null;
+
+      final KhipuResult? result = await platform.startOperation(
+        KhipuStartOperationOptions(operationId: 'abc123'),
+      );
+
+      expect(result, isNull);
+    });
+
+    test(
+        'survives operationId, result, exitTitle and exitMessage arriving null',
+        () async {
+      // These four are the ones FlutterKhipuPlugin.kt sets straight from
+      // platform types (no `?.let` guard), so they are the ones actually
+      // nullable at runtime on Android.
+      respond = (MethodCall _) => nativeResult(
+            operationId: null,
+            result: null,
+            exitTitle: null,
+            exitMessage: null,
+          );
+
+      final KhipuResult? result = await platform.startOperation(
+        KhipuStartOperationOptions(operationId: 'abc123'),
+      );
+
+      expect(result, isNotNull);
+      expect(result!.operationId, isNull);
+      expect(result.result, isNull);
+      expect(result.exitTitle, isNull);
+      expect(result.exitMessage, isNull);
     });
   });
 }

@@ -101,8 +101,8 @@ class KhipuResult {
       this.events});
 
   static KhipuResult fromJson(Map<Object?, Object?> json) {
-    var eventsJson = (json['events'] as List<Object?>);
-    var events = eventsJson.map((event) => KhipuEvent.fromJson(event));
+    var eventsJson = json['events'] as List<Object?>?;
+    var events = eventsJson?.map((event) => KhipuEvent.fromJson(event));
 
     return KhipuResult(
         operationId: json['operationId'] as String?,
