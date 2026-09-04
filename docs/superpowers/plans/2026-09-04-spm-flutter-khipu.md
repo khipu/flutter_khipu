@@ -361,8 +361,11 @@ ios/<plugin_name>/Package.swift. FlutterKhipuPlugin.swift is unchanged.
 
 Raises the iOS floor to 13.0 on both paths and pins KhipuClientIOS 2.16.4
 exactly on both. That pin is at the KhipuClientIOS level only — its own
-Package.swift uses open ranges for its transitives, so upstream still
-governs whether both paths resolve the same transitive graph."
+Package.swift uses open ranges for its transitives, and even tighter
+ranges there would leave Starscream floating (it arrives via SocketIO's
+own open range, not as a declared KhipuClientIOS dependency), so the
+two paths can still diverge below KhipuClientIOS itself. Known, bounded
+upstream limitation, not something our pin closes."
 ```
 
 ---

@@ -103,8 +103,13 @@ está migrado a `Bundle.module` bajo `#if SWIFT_PACKAGE`.
    `KhenshinSecureMessage 1.4.1`, `KhenshinProtocolSwift 1.0.60`), pero su `Package.swift` las declara
    con rangos abiertos (`from:`). Nuestro `exact:` no cierra esa brecha — si upstream publica p. ej.
    `KhenshinProtocolSwift 1.0.61`, CocoaPods y SPM pueden resolver árboles transitivos distintos para
-   la misma versión del plugin. Cerrarla es un asunto de upstream (fijar `exact:` o `.upToNextMinor`
-   en su propio `Package.swift`), no algo que este plugin controle.
+   la misma versión del plugin. **Esta brecha es de upstream y solo acotable, no cerrable del todo**:
+   aunque `KhipuClientIOS` endureciera sus rangos a `exact:`/`.upToNextMinor`, `Starscream` seguiría
+   flotando, porque no es una dependencia declarada de `KhipuClientIOS` — llega transitivamente vía
+   `socket.io-client-swift 16.1.1`, cuyo propio manifiesto la declara
+   `.upToNextMajor(from: "4.0.8")`. Cerrarlo del todo exigiría que upstream declare `Starscream`
+   directo, lo que choca con una omisión deliberada de su diseño SPM. Es una limitación conocida y
+   acotada, no un arreglo pendiente.
 4. **Validación de los dos caminos, más una corrida sin CocoaPods** (desechable, ver §9).
 5. **Versión del plugin: `1.7.0`.** El piso iOS 12→13 es nominalmente breaking, pero Flutter ya
    impone iOS 13 desde antes, así que en la práctica no afecta a nadie en Flutter moderno; y sigue la
@@ -286,7 +291,7 @@ CocoaPods hay que forzarlo explícitamente.
 | El salto de SDK 3.38.4 → 3.44.9 rompa algo del lado Dart (`flutter_lints: ^3.0.0` quedó viejo) | Bajo | Paso 6 del gate. Si `flutter analyze` se queja, bumpear `flutter_lints` es un cambio aparte y acotado |
 | `RunnerTests` pierde sus `search_paths` al deintegrar pods | Bajo | Solo afecta el paso 5, que es desechable |
 | `FlutterFramework` se vuelva obligatorio en un Flutter futuro | Bajo | 18/19 plugins first-party no lo declaran; validar en 3.44.9 lo comprueba; sería un cambio aditivo de una línea |
-| Que CocoaPods y SPM resuelvan transitivas distintas de `KhipuClientIOS` (su podspec las fija exactas, su `Package.swift` usa `from:`) si upstream publica una versión nueva de una de ellas | Bajo | Nuestro `exact:` en `KhipuClientIOS` no lo cierra — es una brecha de upstream, no de este plugin. Se cierra ahí, fijando `exact:` o `.upToNextMinor` en el `Package.swift` de `KhipuClientIOS` |
+| Que CocoaPods y SPM resuelvan transitivas distintas de `KhipuClientIOS` (su podspec las fija exactas, su `Package.swift` usa `from:`) si upstream publica una versión nueva de una de ellas | Bajo | Nuestro `exact:` en `KhipuClientIOS` no lo cierra — es una brecha de upstream, no de este plugin, y solo acotable: `Starscream` llega vía `socket.io-client-swift` como `.upToNextMajor(from: "4.0.8")` y no como dependencia directa de `KhipuClientIOS`, así que ni endureciendo sus rangos a `exact:` upstream la fijaría del todo |
 
 ## 11. Fuera de alcance
 
