@@ -59,7 +59,7 @@ Local actual: **3.38.4** (2025-12-03, Dart 3.10.3). **Se actualiza a `3.44.9`** 
 | Ítem | Valor |
 |---|---|
 | Repo SPM | `https://github.com/khipu/KhipuClientIOS.git` |
-| SPM disponible desde | `2.16.3` · último tag **`2.16.4`** |
+| SPM disponible desde | `2.16.3` · último tag **`2.16.5`** |
 | `platforms` en su `Package.swift` | `.iOS(.v13)` |
 | `deployment_target` en su podspec | `12.0` (dual con mínimos distintos) |
 | Product | `KhipuClientIOS` |
@@ -96,20 +96,20 @@ está migrado a `Bundle.module` bajo `#if SWIFT_PACKAGE`.
 
 1. **Dual CocoaPods + SPM.** El podspec se mantiene funcional.
 2. **iOS 13.0 en ambos caminos** del plugin (podspec y `Package.swift`), un solo mínimo que documentar.
-3. **`KhipuClientIOS 2.16.4` con pin exacto en ambos caminos.** Política: el plugin es la compuerta
+3. **`KhipuClientIOS 2.16.5` con pin exacto en ambos caminos.** Política: el plugin es la compuerta
    de versiones — se libera una versión nueva del plugin cuando sale una versión nueva de la biblioteca.
-   **El pin exacto garantiza la versión de `KhipuClientIOS` en sí, no de su árbol completo**: su
-   podspec fija las transitivas exactas (`Socket.IO-Client-Swift 16.1.1`, `Starscream 4.0.8`,
-   `KhenshinSecureMessage 1.4.1`, `KhenshinProtocolSwift 1.0.60`), pero su `Package.swift` las declara
-   con rangos abiertos (`from:`). Nuestro `exact:` no cierra esa brecha — si upstream publica p. ej.
-   `KhenshinProtocolSwift 1.0.61`, CocoaPods y SPM pueden resolver árboles transitivos distintos para
-   la misma versión del plugin. **Esta brecha es de upstream y solo acotable, no cerrable del todo**:
-   aunque `KhipuClientIOS` endureciera sus rangos a `exact:`/`.upToNextMinor`, `Starscream` seguiría
-   flotando, porque no es una dependencia declarada de `KhipuClientIOS` — llega transitivamente vía
-   `socket.io-client-swift 16.1.1`, cuyo propio manifiesto la declara
-   `.upToNextMajor(from: "4.0.8")`. Cerrarlo del todo exigiría que upstream declare `Starscream`
-   directo, lo que choca con una omisión deliberada de su diseño SPM. Es una limitación conocida y
-   acotada, no un arreglo pendiente.
+   **El pin exacto garantiza la versión de `KhipuClientIOS` en sí, no necesariamente la de su árbol
+   completo**, aunque desde `2.16.5` esa brecha es mucho más angosta que en `2.16.4`: su
+   `Package.swift` ahora fija exactas sus tres dependencias de producción (`.exact("16.1.1")` para
+   `Socket.IO-Client-Swift`, `.exact("1.0.60")` para `KhenshinProtocolSwift`, `.exact("1.4.1")` para
+   `KhenshinSecureMessage`), igual que su podspec — en `2.16.4` `Package.swift` las declaraba con
+   rangos abiertos (`from:`) y esa divergencia ya no existe para esas tres. **Lo que queda abierto es
+   más puntual: `Starscream`.** El podspec lo fija en `'4.0.8'`, pero no es una dependencia declarada
+   de `Package.swift` en absoluto — llega transitivamente vía `socket.io-client-swift`, cuyo propio
+   manifiesto lo declara `.upToNextMajor(from: "4.0.8")`, así que bajo SPM puede resolver a cualquier
+   `4.x`. Cerrarlo exigiría que upstream declare `Starscream` como dependencia directa, lo que choca
+   con una omisión deliberada de su diseño SPM. Es una limitación conocida y acotada, no un arreglo
+   pendiente.
 4. **Validación de los dos caminos, más una corrida sin CocoaPods** (desechable, ver §9).
 5. **Versión del plugin: `1.7.0`.** El piso iOS 12→13 es nominalmente breaking, pero Flutter ya
    impone iOS 13 desde antes, así que en la práctica no afecta a nadie en Flutter moderno; y sigue la
@@ -167,7 +167,7 @@ let package = Package(
         .library(name: "flutter-khipu", targets: ["flutter_khipu"])
     ],
     dependencies: [
-        .package(url: "https://github.com/khipu/KhipuClientIOS.git", exact: "2.16.4")
+        .package(url: "https://github.com/khipu/KhipuClientIOS.git", exact: "2.16.5")
     ],
     targets: [
         .target(
@@ -198,7 +198,7 @@ dejarlo inferido.
 
 ## 6. `ios/flutter_khipu.podspec`
 
-Cambios funcionales: `source_files` al path nuevo, `platform` a 13.0, pod a `2.16.4`. Se corrige de
+Cambios funcionales: `source_files` al path nuevo, `platform` a 13.0, pod a `2.16.5`. Se corrige de
 paso la metadata del template, ya que el archivo se reescribe igual.
 
 ```ruby
@@ -214,7 +214,7 @@ Flutter plugin for Khipu, this plugin enables a flutter app to use Khipu to auth
   s.source       = { :path => '.' }
   s.source_files = 'flutter_khipu/Sources/flutter_khipu/**/*.swift'
   s.dependency 'Flutter'
-  s.dependency 'KhipuClientIOS', '2.16.4'
+  s.dependency 'KhipuClientIOS', '2.16.5'
   s.platform = :ios, '13.0'
 
   s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES', 'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'i386' }
@@ -243,7 +243,7 @@ viven dentro de `KhipuClientIOS`, que ya los resuelve upstream vía `Bundle.modu
 | `example/ios/Podfile` | `platform :ios, '15.0'` → `'13.0'`, para alinear con el piso real. **El Podfile se mantiene commiteado**: es lo que permite validar la regresión CocoaPods |
 | `ios/.gitignore` | agregar `.build/` y `.swiftpm/` |
 | `pubspec.yaml` | `version: 1.6.1` → `1.7.0`. **`flutter: '>=3.3.0'` se mantiene**: un Flutter viejo ignora el `Package.swift` y usa el podspec, así que bajar la compatibilidad no aportaría nada |
-| `CHANGELOG.md` | entrada `1.7.0`: soporte SPM, mínimo iOS 13, `KhipuClientIOS 2.16.4` |
+| `CHANGELOG.md` | entrada `1.7.0`: soporte SPM, mínimo iOS 13, `KhipuClientIOS 2.16.5` |
 | `README.md` | reemplazar *"no need for special setup for iOS"* por una sección iOS: mínimo iOS 13 y soporte de CocoaPods y SPM |
 
 ### Migración automática del proyecto Xcode del example
@@ -291,7 +291,7 @@ CocoaPods hay que forzarlo explícitamente.
 | El salto de SDK 3.38.4 → 3.44.9 rompa algo del lado Dart (`flutter_lints: ^3.0.0` quedó viejo) | Bajo | Paso 6 del gate. Si `flutter analyze` se queja, bumpear `flutter_lints` es un cambio aparte y acotado |
 | `RunnerTests` pierde sus `search_paths` al deintegrar pods | Bajo | Solo afecta el paso 5, que es desechable |
 | `FlutterFramework` se vuelva obligatorio en un Flutter futuro | Bajo | 18/19 plugins first-party no lo declaran; validar en 3.44.9 lo comprueba; sería un cambio aditivo de una línea |
-| Que CocoaPods y SPM resuelvan transitivas distintas de `KhipuClientIOS` (su podspec las fija exactas, su `Package.swift` usa `from:`) si upstream publica una versión nueva de una de ellas | Bajo | Nuestro `exact:` en `KhipuClientIOS` no lo cierra — es una brecha de upstream, no de este plugin, y solo acotable: `Starscream` llega vía `socket.io-client-swift` como `.upToNextMajor(from: "4.0.8")` y no como dependencia directa de `KhipuClientIOS`, así que ni endureciendo sus rangos a `exact:` upstream la fijaría del todo |
+| Que CocoaPods y SPM resuelvan una versión de `Starscream` distinta entre sí (el podspec de `KhipuClientIOS` lo fija en `'4.0.8'`, pero no es una dependencia declarada de su `Package.swift`) | Bajo | Llega transitivamente vía `socket.io-client-swift` como `.upToNextMajor(from: "4.0.8")`, así que bajo SPM puede resolver a cualquier `4.x`. Desde `2.16.5` es la única transitiva de producción sin pin exacto en ambos caminos — las otras tres (`Socket.IO-Client-Swift`, `KhenshinProtocolSwift`, `KhenshinSecureMessage`) ya están fijadas exactas en `Package.swift`, igual que en el podspec |
 
 ## 11. Fuera de alcance
 
