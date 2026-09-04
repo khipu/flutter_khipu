@@ -1,1 +1,9 @@
+# Internal design documents. Committed to git on purpose, but not part of the
+# published package.
 docs/
+
+# A .pubignore replaces .gitignore for the directory it lives in, so the root
+# .gitignore's build/ pattern stops applying once this file exists. Without
+# restating it, example/build/ ships — which meant 87 MB of Dart compiler
+# .dill caches in the tarball.
+build/
