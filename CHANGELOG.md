@@ -1,3 +1,20 @@
+# 1.7.0
+
+iOS now supports Swift Package Manager alongside CocoaPods, so an app whose every plugin supports
+SPM can drop CocoaPods entirely. The minimum iOS version is now 13.0 and the Khipu client for iOS
+was bumped to 2.16.5.
+
+That client version carries fixes for two crashes this plugin's migration surfaced: a Keychain
+failure aborting the payment when "remember my credentials" was on, and force-unwrapped optional
+protocol fields aborting the closing screens.
+
+Fixes a crash where a payment whose `exitUrl` came back empty threw `type 'Null' is not a subtype
+of type 'String'` from `KhipuResult.fromJson` instead of returning a result. Every `KhipuResult`
+and `KhipuEvent` field was already declared nullable; the JSON parsing now matches.
+
+The example app was rewritten to let every option be toggled before launching Khipu, instead of
+launching automatically with a hardcoded operation id.
+
 # 1.6.1
 
 Khipu clients for iOS bumped to 2.16.2 and Android bumped to 2.27.0

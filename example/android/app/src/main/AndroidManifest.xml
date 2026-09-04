@@ -41,5 +41,17 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+        <!-- Required so Khipu's openApp can detect and launch banking apps on
+             Android 11 (API 30) and above, see:
+             https://developer.android.com/training/package-visibility -->
+        <package android:name="cl.bci.pass" />
+        <package android:name="cl.bancochile.mi_pass2" />
+        <package android:name="net.veritran.becl.prod" />
+        <package android:name="cl.scotiabank.go" />
+        <package android:name="cl.santander.santanderpasschile" />
+        <package android:name="com.konylabs.ItauMobileBank" />
+        <package android:name="cl.bancosecurity.securitypass" />
+        <package android:name="cl.bice.bicepassmobile2" />
+        <package android:name="cl.consorcio.tupass" />
     </queries>
 </manifest>

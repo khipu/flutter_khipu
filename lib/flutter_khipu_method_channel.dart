@@ -39,6 +39,6 @@ class MethodChannelFlutterKhipu extends FlutterKhipuPlatform {
       'darkOnTopBarContainer': options.colors?.darkOnTopBarContainer,
     });
 
-    return KhipuResult.fromJson(result);
+    return result == null ? null : KhipuResult.fromJson(result);
   }
 }
