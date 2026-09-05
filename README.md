@@ -4,8 +4,9 @@ Flutter plugin for Khipu, this plugin enables a flutter app to use Khipu to auth
 
 ## Installing the plugin
 
-Version 1.8.0 and later require **Flutter 3.44 or later** (Dart 3.12). On Flutter 3.41 and
-earlier, the last supported version is **1.7.1**.
+Version 1.8.0 and later require **Flutter 3.44 or later** (Dart 3.12). Flutter 3.41 and earlier
+are served by the **1.7.x** line, which is maintained on the `1.7.x` branch and still receives
+critical fixes.
 
 You do not need to pin anything for this: pub takes each version's SDK constraint into account
 when resolving, so a `flutter_khipu: ^1.7.1` dependency resolves to 1.7.1 on an older Flutter
