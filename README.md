@@ -4,6 +4,15 @@ Flutter plugin for Khipu, this plugin enables a flutter app to use Khipu to auth
 
 ## Installing the plugin
 
+Version 1.8.0 and later require **Flutter 3.44 or later** (Dart 3.12). Flutter 3.41 and earlier
+are served by the **1.7.x** line, which is maintained on the `1.7.x` branch and still receives
+critical fixes.
+
+You do not need to pin anything for this: pub takes each version's SDK constraint into account
+when resolving, so a `flutter_khipu: ^1.7.1` dependency resolves to 1.7.1 on an older Flutter
+and to 1.8.0 on 3.44 or later. `flutter pub upgrade` will report that a newer version exists
+but is incompatible, which is expected and not an error.
+
 Add this plugin to your dependencies
 
 ```bash
@@ -90,7 +99,12 @@ to the `android/gradle.properties` file
 
 #### Gradle plugins
 
-Khipu needs the Kotlin Android Gradle Plugin to be at least 1.9.0, so please make sure the file `android/settings.gradle` has at least that version
+This plugin does not apply the Kotlin Gradle Plugin (KGP) itself, so Kotlin has to come from
+your project. With **AGP 9** there is nothing to do: Kotlin support ships with AGP. With
+**AGP 8 and earlier**, your app supplies KGP, and Khipu needs it to be at least 1.9.0, so make
+sure `android/settings.gradle` (or `settings.gradle.kts`) declares at least that version.
+Projects created by recent Flutter versions already declare a newer one — if the version there
+is higher than 1.9.0, leave it alone.
 
 ```groovy
 plugins {

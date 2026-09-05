@@ -1,3 +1,19 @@
+# 1.8.0
+
+Migrates the plugin to Built-in Kotlin. It no longer applies the Kotlin Gradle Plugin (KGP)
+itself: AGP 9 ships Kotlin support of its own, and applying KGP on top of it fails the build.
+
+This raises the minimum supported version to Flutter 3.44 and Dart 3.12. The bump is not
+cosmetic. Flutter applies `kotlin-android` to plugin subprojects itself, and that behaviour
+landed in 3.44.0 — on anything older, a plugin that does not apply KGP has its Kotlin sources
+left uncompiled. If your app is on Flutter 3.41 or earlier, stay on the 1.7.x line: it is
+maintained on the `1.7.x` branch and still receives critical fixes.
+
+Nothing changes in the plugin's API or behaviour, and the compiled bytecode still targets
+Java 8. What changes is that an app using this plugin no longer gets the warning Flutter emits
+for plugins that apply KGP, and will keep building once Flutter turns that warning into an
+error.
+
 # 1.7.1
 
 Fixes how the plugin finds the view controller to present Khipu from on iOS. It used
