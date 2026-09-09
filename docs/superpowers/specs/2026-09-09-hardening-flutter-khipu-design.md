@@ -122,6 +122,40 @@ Consecuencias que el README no menciona hoy:
 **No se deben remover con `tools:node="remove"`:** rompería la autorización en los
 bancos que la exigen.
 
+### 2.6 Incompatibilidad hacia adelante del protocolo (fuera de nuestro alcance)
+
+Verificado por lectura, sin reproducir. Lo levantó la sesión de React Native, que sí
+lo vio caer una vez en un dispositivo.
+
+Los enums del protocolo se generan con un `forValue(String)` que **lanza** ante un
+valor que no conoce, en vez de degradar:
+
+    public static FailureReasonType forValue(String) throws java.io.IOException;
+
+No hay `@JsonEnumDefaultValue`, y el `ObjectMapper` de `Converter` sólo configura
+`FAIL_ON_UNKNOWN_PROPERTIES` — que cubre propiedades desconocidas, no valores de enum
+desconocidos. **Los 8 enums de `com.khipu.khenshin.protocol` (1.0.59) tienen la misma
+firma**, así que no es un caso suelto sino el patrón del generador.
+
+Consecuencia: el día que el backend agregue un valor nuevo, todo comercio con una
+versión anterior del SDK instalada se rompe. Y para `FailureReasonType`, se rompe
+exactamente cuando el pago está fallando.
+
+**Las dos plataformas cuelgan el `Future`, por caminos opuestos:**
+
+| | Qué pasa | Efecto |
+|---|---|---|
+| Android | Excepción no atrapada en el `EventThread` de socket.io | **Muere el proceso.** No queda a quién responderle |
+| iOS | `KhipuSocketIOClient.swift:276-291` decodifica dentro de un `do/catch` que sólo imprime | **La UI queda colgada.** `operationFinished` nunca se setea, `onComplete` nunca corre |
+
+iOS no revienta —los 12 `try!` del cliente están todos en `MockDataGenerator.swift`,
+código de previews— pero tampoco sale: el pagador se queda en una pantalla sin salida.
+
+**Ninguna de las dos es defendible desde el plugin.** En Android no hay proceso donde
+correr un `catch`; en iOS el error se traga dentro del SDK, antes de cualquier código
+nuestro. Es la única forma de colgar el `Future` que el Ciclo 1 no puede cerrar, y por
+eso encabeza el ticket upstream de §6.
+
 ---
 
 ## 3. Decisiones confirmadas
@@ -294,11 +328,18 @@ Dos cosas a verificar **antes** de escribirlo, o el CI nace rojo:
 
 ### Ticket upstream
 
-A `khipu-client-android`, sin bloquear este ciclo:
+No bloquea este ciclo, pero el primer punto no es menor y va a los equipos de
+`khenshin-protocol`, `khipu-client-android` y `KhipuClientIOS` a la vez:
 
-1. Qué bancos gatillan el paso de geolocalización, para poder documentarlo con
+1. **La incompatibilidad hacia adelante de §2.6.** Un valor de enum nuevo en el backend
+   mata el proceso en Android y cuelga la UI en iOS, en las 8 enumeraciones del
+   protocolo. El arreglo es del generador, no de los puentes: `@JsonEnumDefaultValue`
+   más `READ_UNKNOWN_ENUM_VALUES_AS_NULL` en Android, y un caso `unknown` en los enums
+   Swift. Mientras no exista, agregar un valor al backend es un cambio rompedor para
+   todo comercio ya instalado.
+2. Qué bancos gatillan el paso de geolocalización, para poder documentarlo con
    precisión en vez de en general.
-2. Que la matriz de salidas de §2.2 pase a ser contrato documentado. Hoy se conoce
+3. Que la matriz de salidas de §2.2 pase a ser contrato documentado. Hoy se conoce
    sólo por lectura de bytecode, y el refuerzo del plugin depende de que se mantenga.
 
 ---
@@ -386,6 +427,7 @@ Ningún ciclo se da por cerrado sin esto.
 
 - Remover los permisos de ubicación del manifest fusionado (§2.5).
 - Cambiar el comportamiento del SDK Android o iOS.
+- Defenderse de §2.6. No hay defensa posible desde el plugin; va por el ticket de §6.
 - Una API de cancelación programática desde Dart.
 - Tests de integración con `integration_test`, pese a estar declarado en el
   `dev_dependencies` del example.
