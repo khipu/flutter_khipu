@@ -141,6 +141,23 @@ Consecuencia: el día que el backend agregue un valor nuevo, todo comercio con u
 versión anterior del SDK instalada se rompe. Y para `FailureReasonType`, se rompe
 exactamente cuando el pago está fallando.
 
+**Y el desfase ya está distribuyéndose, no es hipotético.** Las dos librerías que este
+plugin fija hoy no declaran el mismo conjunto de valores:
+
+| | Versión | Constantes de `FailureReasonType` |
+|---|---|---|
+| Android | `com.khipu.khenshin:protocol` 1.0.59 | 14 |
+| iOS | `KhenshinProtocolSwift` 1.0.60 | 15 |
+
+Android es un **subconjunto estricto**: los 14 están en iOS, y el que falta es
+`USER_DISCONNECTED`. El cliente iOS además ramifica sobre él en `FieldUtils.swift:89`,
+así que no es una constante muerta reservada para después.
+
+Lo que **no** se puede verificar desde acá, y por eso es la primera pregunta del ticket:
+si el backend ya emite `USER_DISCONNECTED` dentro de un `OperationFailure`. Si lo hace,
+esto no es un riesgo a futuro — es un crash en producción de Android, hoy, con las
+versiones que este plugin fija.
+
 **Las dos plataformas cuelgan el `Future`, por caminos opuestos:**
 
 | | Qué pasa | Efecto |
@@ -331,9 +348,13 @@ Dos cosas a verificar **antes** de escribirlo, o el CI nace rojo:
 No bloquea este ciclo, pero el primer punto no es menor y va a los equipos de
 `khenshin-protocol`, `khipu-client-android` y `KhipuClientIOS` a la vez:
 
-1. **La incompatibilidad hacia adelante de §2.6.** Un valor de enum nuevo en el backend
-   mata el proceso en Android y cuelga la UI en iOS, en las 8 enumeraciones del
-   protocolo. El arreglo es del generador, no de los puentes: `@JsonEnumDefaultValue`
+1. **La incompatibilidad hacia adelante de §2.6, empezando por la pregunta concreta:
+   ¿el backend emite ya `USER_DISCONNECTED` en un `OperationFailure`?** Android 1.0.59
+   no lo conoce e iOS 1.0.60 sí, así que la respuesta decide si esto es deuda o un
+   incidente. El argumento a poner primero no es el crash: es que el síntoma aparece en
+   el dispositivo del pagador y no en el deploy, así que quien agregue un valor no verá
+   nada roto en su CI ni en sus métricas. Un valor de enum nuevo mata el proceso en
+   Android y cuelga la UI en iOS, en las 8 enumeraciones del protocolo. El arreglo es del generador, no de los puentes: `@JsonEnumDefaultValue`
    más `READ_UNKNOWN_ENUM_VALUES_AS_NULL` en Android, y un caso `unknown` en los enums
    Swift. Mientras no exista, agregar un valor al backend es un cambio rompedor para
    todo comercio ya instalado.
