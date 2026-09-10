@@ -294,7 +294,28 @@ class FlutterKhipuPluginTest {
         plugin.onDetachedFromActivityForConfigChanges()
         plugin.onReattachedToActivityForConfigChanges(binding)
 
-        verify(binding, org.mockito.Mockito.times(2)).addActivityResultListener(plugin)
-        verify(binding, org.mockito.Mockito.times(1)).removeActivityResultListener(plugin)
+        verify(binding, times(2)).addActivityResultListener(plugin)
+        verify(binding, times(1)).removeActivityResultListener(plugin)
+    }
+
+    @Test
+    fun `a configuration change does not cancel an operation in flight`() {
+        // A diferencia del test anterior (que sólo cuenta listeners), éste recorre
+        // el viaje completo: si `detach` alguna vez respondiera pendingResult
+        // durante una rotación, o lo borrara sin responder, este test lo detecta
+        // donde el otro no podría.
+        plugin.onAttachedToActivity(binding)
+        val result = mock(MethodChannel.Result::class.java)
+        startOperation(result)
+
+        plugin.onDetachedFromActivityForConfigChanges()
+        verify(result, never()).error(any(), any(), any())
+        verify(result, never()).success(any())
+
+        plugin.onReattachedToActivityForConfigChanges(binding)
+        assertTrue(plugin.onActivityResult(101010, Activity.RESULT_OK, intentCarrying(khipuResult())))
+
+        verify(result).success(any())
+        verify(result, never()).error(any(), any(), any())
     }
 }
