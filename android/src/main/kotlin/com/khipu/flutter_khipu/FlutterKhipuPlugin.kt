@@ -22,7 +22,8 @@ class FlutterKhipuPlugin : FlutterPlugin, MethodCallHandler, PluginRegistry.Acti
     ActivityAware {
 
     private lateinit var channel: MethodChannel
-    private var activity: Activity? = null
+    private var binding: ActivityPluginBinding? = null
+    private val activity: Activity? get() = binding?.activity
     private var pendingResult: Result? = null
 
     /**
@@ -147,21 +148,38 @@ class FlutterKhipuPlugin : FlutterPlugin, MethodCallHandler, PluginRegistry.Acti
     }
 
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {
-        activity = binding.activity
-        binding.addActivityResultListener(this)
-    }
-
-    override fun onDetachedFromActivityForConfigChanges() {
-        activity = null
+        attach(binding)
     }
 
     override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {
-        activity = binding.activity
-        binding.addActivityResultListener(this)
+        attach(binding)
+    }
+
+    override fun onDetachedFromActivityForConfigChanges() {
+        detach(answerPending = false)
     }
 
     override fun onDetachedFromActivity() {
-        activity = null
+        detach(answerPending = true)
+    }
+
+    private fun attach(binding: ActivityPluginBinding) {
+        detach(answerPending = false)
+        this.binding = binding
+        binding.addActivityResultListener(this)
+    }
+
+    /**
+     * Una rotación no cancela el pago: la activity de Khipu sigue arriba y el
+     * resultado llegará al reattach. Un desprendimiento definitivo sí, y dejar el
+     * callback sin responder ahí colgaría el Future para siempre.
+     */
+    private fun detach(answerPending: Boolean) {
+        binding?.removeActivityResultListener(this)
+        binding = null
+        if (answerPending) {
+            respondOnce { it.error("ACTIVITY_DETACHED", "The activity went away before Khipu returned", null) }
+        }
     }
 
     companion object {

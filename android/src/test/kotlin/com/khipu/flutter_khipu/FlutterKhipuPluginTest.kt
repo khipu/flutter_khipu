@@ -269,4 +269,32 @@ class FlutterKhipuPluginTest {
         verify(result, never()).success(any())
         verify(result, never()).error(any(), any(), any())
     }
+
+    @Test
+    fun `detaching from the activity answers an operation in flight`() {
+        plugin.onAttachedToActivity(binding)
+        val result = mock(MethodChannel.Result::class.java)
+        startOperation(result)
+
+        plugin.onDetachedFromActivity()
+
+        verify(result).error("ACTIVITY_DETACHED", "The activity went away before Khipu returned", null)
+    }
+
+    @Test
+    fun `detaching removes the activity result listener`() {
+        plugin.onAttachedToActivity(binding)
+        plugin.onDetachedFromActivity()
+        verify(binding).removeActivityResultListener(plugin)
+    }
+
+    @Test
+    fun `a configuration change does not accumulate listeners`() {
+        plugin.onAttachedToActivity(binding)
+        plugin.onDetachedFromActivityForConfigChanges()
+        plugin.onReattachedToActivityForConfigChanges(binding)
+
+        verify(binding, org.mockito.Mockito.times(2)).addActivityResultListener(plugin)
+        verify(binding, org.mockito.Mockito.times(1)).removeActivityResultListener(plugin)
+    }
 }
