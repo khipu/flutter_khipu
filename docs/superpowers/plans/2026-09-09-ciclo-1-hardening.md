@@ -36,7 +36,7 @@
 | `android/.../FlutterKhipuPlugin.kt` | Ciclo de vida y plomería del resultado. Nada de mapeo. | 3, 4, 5 |
 | `android/src/test/kotlin/.../KhipuOptionsMapperTest.kt` | **Nuevo.** | 2 |
 | `android/src/test/kotlin/.../FlutterKhipuPluginTest.kt` | **Nuevo.** | 3, 4, 5 |
-| `android/build.gradle` | Stubs de test, pin de `khenshin-protocol`, higiene. | 2, 6, 12 |
+| `android/build.gradle` | Stubs de test, flag de Byte Buddy, pin del cliente, higiene. | 2, 3, 6, 12 |
 | `ios/.../FlutterKhipuPlugin.swift` | Guard de concurrencia únicamente. | 7 |
 | `README.md` | Geolocalización, códigos de error, cancelación. | 8 |
 | `test/package_metadata_test.dart` | **Nuevo.** Sincronía de versiones entre pubspec, podspec y Package.swift. | 13 |
@@ -1319,6 +1319,34 @@ Borrar el bloque `buildscript { ... }` entero (fija AGP 7.3.0, obsoleto y en con
 ```
 
 Y el bloque `kotlin { compilerOptions { jvmTarget = ... JVM_11 } }`.
+
+- [ ] **Step 1b: Modernizar Mockito y retirar el flag experimental de Byte Buddy**
+
+La Task 3 tuvo que agregar `systemProperty 'net.bytebuddy.experimental', 'true'` porque
+el `mockito-core:5.0.0` que declara el repo no puede instrumentar clases bajo JDK 21. Es
+un parche al síntoma: opta permanentemente por la ruta de instrumentación "experimental"
+de Byte Buddy, que tolera versiones de bytecode que no reconoce en vez de validarlas, y
+queda activo para todo contribuyente y toda imagen de CI aunque ya no haga falta.
+
+`1.7.x` no podía arreglarlo —no recibe higiene— pero `main` sí. En `android/build.gradle`:
+
+```groovy
+        testImplementation("org.mockito:mockito-core:5.14.2")
+```
+
+y borrar la línea `systemProperty 'net.bytebuddy.experimental', 'true'` del bloque
+`testOptions`.
+
+Verificar que los tests siguen verdes **sin** el flag, que es el punto entero:
+
+```bash
+cd example/android && ./gradlew :flutter_khipu:test
+```
+
+Esperado: 20 tests en verde. Si alguno falla por la API de Mockito, la 5.14 es
+compatible hacia atrás con el uso que hacen estos tests (`mock`, `when`, `verify`,
+`doThrow`, `never`, `times`) — si aparece algo distinto, parar y reportar en vez de
+reponer el flag.
 
 - [ ] **Step 2: Quitar el `package=` deprecado**
 
