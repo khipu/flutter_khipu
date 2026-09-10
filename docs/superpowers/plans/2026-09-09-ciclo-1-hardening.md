@@ -31,14 +31,15 @@
 
 | Archivo | Responsabilidad | Tarea |
 |---|---|---|
-| `.github/workflows/ci.yml` | CI. Contenido distinto por rama. | 1, 10 |
+| `.github/workflows/ci.yml` | CI. Contenido distinto por rama. | 1, 11 |
 | `android/.../KhipuOptionsMapper.kt` | **Nuevo.** Traduce el `MethodCall` a `KhipuOptions`. Sin estado. | 2 |
 | `android/.../FlutterKhipuPlugin.kt` | Ciclo de vida y plomería del resultado. Nada de mapeo. | 3, 4, 5 |
 | `android/src/test/kotlin/.../KhipuOptionsMapperTest.kt` | **Nuevo.** | 2 |
 | `android/src/test/kotlin/.../FlutterKhipuPluginTest.kt` | **Nuevo.** | 3, 4, 5 |
-| `ios/.../FlutterKhipuPlugin.swift` | Guard de concurrencia únicamente. | 6 |
-| `README.md` | Geolocalización, códigos de error, cancelación. | 7 |
-| `test/package_metadata_test.dart` | **Nuevo.** Sincronía de versiones entre pubspec, podspec y Package.swift. | 12 |
+| `android/build.gradle` | Stubs de test, pin de `khenshin-protocol`, higiene. | 2, 6, 12 |
+| `ios/.../FlutterKhipuPlugin.swift` | Guard de concurrencia únicamente. | 7 |
+| `README.md` | Geolocalización, códigos de error, cancelación. | 8 |
+| `test/package_metadata_test.dart` | **Nuevo.** Sincronía de versiones entre pubspec, podspec y Package.swift. | 13 |
 
 ---
 
@@ -875,7 +876,79 @@ an operation in flight instead of leaving the Future unresolved."
 
 ---
 
-### Task 6: Guard de concurrencia en iOS
+### Task 6: Subir `khenshin-protocol` a 1.0.60
+
+Cierra §2.6.a del spec. Es el único defecto de este ciclo que hoy mata el proceso de la app del comercio, y el arreglo es una línea.
+
+**Files:**
+- Modify: `android/build.gradle`
+
+**Interfaces:**
+- Consumes: nada.
+- Produces: nada.
+
+- [ ] **Step 1: Confirmar la versión transitiva actual**
+
+```bash
+cd example/android && ./gradlew :flutter_khipu:dependencies --configuration releaseRuntimeClasspath | grep khenshin
+```
+
+Esperado: `com.khipu.khenshin:protocol:1.0.59`, traída por `khipu-client-android:2.27.0`.
+
+- [ ] **Step 2: Declarar la dependencia directa**
+
+En `android/build.gradle`, dentro del bloque `dependencies`, junto a la del cliente:
+
+```groovy
+        implementation 'com.khipu:khipu-client-android:2.27.0'
+        // khipu-client-android 2.27.0 arrastra protocol 1.0.59, que no conoce
+        // FailureReasonType.USER_DISCONNECTED. El enum lo deserializa un forValue
+        // generado que LANZA ante un valor desconocido, y la excepción sale sin
+        // atrapar en el EventThread de socket.io: muere el proceso de la app.
+        // 1.0.60 agrega esa constante y nada más — el diff de su API pública contra
+        // 1.0.59 es una línea agregada, cero quitadas — así que es binariamente
+        // compatible con el cliente, que fue compilado contra 1.0.59.
+        // Retirar cuando khipu-client-android suba su propio pin.
+        implementation 'com.khipu.khenshin:protocol:1.0.60'
+```
+
+- [ ] **Step 3: Verificar que la resolución subió y nada más se movió**
+
+```bash
+cd example/android && ./gradlew :flutter_khipu:dependencies --configuration releaseRuntimeClasspath | grep khenshin
+```
+
+Esperado: `protocol:1.0.59 -> 1.0.60` (Gradle marca así el override). Ninguna otra dependencia cambia de versión.
+
+- [ ] **Step 4: Verificar que el cliente sigue compilando y corriendo contra el jar nuevo**
+
+```bash
+cd example/android && ./gradlew :flutter_khipu:test
+cd .. && flutter build apk --debug
+```
+
+Esperado: 20 tests en verde y APK construido.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add android/build.gradle
+git commit -m "fix(android): pull khenshin-protocol 1.0.60 for USER_DISCONNECTED
+
+khipu-client-android 2.27.0 pins protocol 1.0.59, whose FailureReasonType has
+14 constants against the 15 the iOS protocol library ships. The missing one is
+USER_DISCONNECTED, and an unknown value does not degrade: the generated
+forValue throws, and on Android that throw escapes uncaught on socket.io's
+EventThread and takes the process with it.
+
+1.0.60 adds that constant and nothing else — one line added to the public API,
+none removed — so it is binary compatible with a client compiled against
+1.0.59. Revert once khipu-client-android raises its own pin."
+```
+
+---
+
+### Task 7: Guard de concurrencia en iOS
 
 **Files:**
 - Modify: `ios/flutter_khipu/Sources/flutter_khipu/FlutterKhipuPlugin.swift`
@@ -939,7 +1012,7 @@ Khipu already on screen presented Khipu on top of Khipu."
 
 ---
 
-### Task 7: Documentación
+### Task 8: Documentación
 
 **Files:**
 - Modify: `README.md`
@@ -1021,7 +1094,7 @@ git commit -m "docs: document location permissions, cancellation and error codes
 
 ---
 
-### Task 8: CHANGELOG y versión 1.7.2
+### Task 9: CHANGELOG y versión 1.7.2
 
 **Files:**
 - Modify: `CHANGELOG.md`
@@ -1034,10 +1107,20 @@ Agregar arriba de todo en `CHANGELOG.md`, siguiendo la prosa explicativa del res
 ```markdown
 # 1.7.2
 
-Hardens the Android result path. None of these had a known trigger — the SDK's four
-exits all carry a result, including the back button, which opens Khipu's own abort
-dialog — but each one left the Dart `Future` unresolved if it ever fired, and a
-payment that never answers is the worst thing this plugin can do quietly.
+Fixes a crash that killed the host app's process on Android, and hardens the result
+path around it.
+
+The crash: `khipu-client-android` pins a version of the Khenshin protocol library whose
+`FailureReasonType` is missing `USER_DISCONNECTED`, which the iOS library has. An
+unknown value there does not degrade — the generated parser throws, and on Android that
+throw escapes uncaught on the socket's event thread and takes the process down. This
+release pulls the protocol library version that knows the value. It adds that one
+constant and nothing else.
+
+The hardening is separate and had no known trigger — the SDK's four exits all carry a
+result, including the back button, which opens Khipu's own abort dialog — but each path
+left the Dart `Future` unresolved if it ever fired, and a payment that never answers is
+the worst thing this plugin can do quietly.
 
 The plugin now validates before it stores the pending result, answers from the
 payload rather than the result code, treats a missing or malformed payload as an
@@ -1085,7 +1168,7 @@ gh pr create --base 1.7.x --title "Harden the Android result path" --body "Imple
 
 ## Fase 2 — Rama `main`
 
-### Task 9: Mergear `1.7.x` a `main`
+### Task 10: Mergear `1.7.x` a `main`
 
 - [ ] **Step 1: Mergear, no cherry-pick**
 
@@ -1113,7 +1196,7 @@ git add -A && git commit --no-edit
 
 ---
 
-### Task 10: CI completo en `main`
+### Task 11: CI completo en `main`
 
 **Files:**
 - Modify: `.github/workflows/ci.yml`
@@ -1217,7 +1300,7 @@ Esperado: `dart` y `android` en verde; `ios` saltado (sólo corre en schedule y 
 
 ---
 
-### Task 11: Higiene del build de Android
+### Task 12: Higiene del build de Android
 
 **Files:**
 - Modify: `android/build.gradle`
@@ -1267,7 +1350,7 @@ git commit -m "build(android): drop the AGP 7.3.0 buildscript and move to Java 1
 
 ---
 
-### Task 12: Higiene del paquete y test de sincronía de versiones
+### Task 13: Higiene del paquete y test de sincronía de versiones
 
 **Files:**
 - Modify: `ios/flutter_khipu.podspec`
@@ -1388,7 +1471,7 @@ git commit -m "chore: sync the podspec version, modernise lints and pin metadata
 
 ---
 
-### Task 13: CHANGELOG y versión 1.8.1
+### Task 14: CHANGELOG y versión 1.8.1
 
 **Files:**
 - Modify: `CHANGELOG.md`
@@ -1418,7 +1501,7 @@ See the 1.7.2 entry for the behavioural changes. Nothing in the plugin's API cha
 
 - [ ] **Step 2: Subir versiones**
 
-`pubspec.yaml`: `1.8.0` → `1.8.1`. El podspec ya quedó en `1.8.1` en la Task 12.
+`pubspec.yaml`: `1.8.0` → `1.8.1`. El podspec ya quedó en `1.8.1` en la Task 13.
 
 - [ ] **Step 3: Gate completo del spec §8**
 

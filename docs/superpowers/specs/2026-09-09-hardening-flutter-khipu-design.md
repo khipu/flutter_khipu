@@ -122,56 +122,63 @@ Consecuencias que el README no menciona hoy:
 **No se deben remover con `tools:node="remove"`:** rompería la autorización en los
 bancos que la exigen.
 
-### 2.6 Incompatibilidad hacia adelante del protocolo (fuera de nuestro alcance)
+### 2.6 Dos defectos del protocolo, no uno
 
-Verificado por lectura, sin reproducir. Lo levantó la sesión de React Native, que sí
-lo vio caer una vez en un dispositivo.
+Los levantó la sesión de React Native. La primera redacción de esta sección los trataba
+como un solo problema cross-platform y **eso era falso**: iOS decodifica
+`USER_DISCONNECTED` sin ningún problema. Son dos defectos con causa, urgencia y dueño
+distintos.
 
-Los enums del protocolo se generan con un `forValue(String)` que **lanza** ante un
-valor que no conoce, en vez de degradar:
+| Valor que llega | Android (14 constantes) | iOS (15 constantes) |
+|---|---|---|
+| `USER_DISCONNECTED` | **crashea, mata el proceso** | decodifica bien |
+| Un valor que ninguna conoce | **crashea, mata el proceso** | se lo traga y cuelga la UI |
 
-    public static FailureReasonType forValue(String) throws java.io.IOException;
+#### 2.6.a Desfase de versión — vivo, sólo Android, y a nuestro alcance
+
+`khipu-client-android:2.27.0` —la última publicada— declara
+`com.khipu.khenshin:protocol:1.0.59` como dependencia runtime. Ese jar tiene **14**
+constantes de `FailureReasonType`. El `KhenshinProtocolSwift` 1.0.60 que fija iOS tiene
+**15**. Android es un subconjunto estricto y el que falta es `USER_DISCONNECTED`, sobre
+el que el cliente iOS además ya ramifica en `FieldUtils.swift:89`.
+
+No hay que esperar a upstream. **`protocol:1.0.60` existe publicado para Android**, y el
+diff de su API pública contra 1.0.59 es exactamente una línea agregada y ninguna quitada:
+
+    > public static final FailureReasonType USER_DISCONNECTED;
+
+Puramente aditivo, o sea binariamente compatible: `khipu-client-android:2.27.0`,
+compilado contra 1.0.59, corre igual contra 1.0.60. Declarar la dependencia directa en
+`android/build.gradle` la sube por resolución de conflictos de Gradle. Ninguna de las dos
+ramas declara hoy nada de `khenshin`, y las dos fijan el cliente 2.27.0, así que el
+arreglo es idéntico en ambas. Entra al Ciclo 1 y a 1.7.2.
+
+Lo que sigue sin poder verificarse desde acá: si el backend ya emite `USER_DISCONNECTED`
+dentro de un `OperationFailure`. Eso decide si esto era un incidente abierto o deuda —
+pero como el arreglo cuesta una línea verificada, se aplica igual sin esperar la respuesta.
+
+#### 2.6.b Degradación ante valores desconocidos — latente, ambas, fuera de alcance
+
+Los enums del protocolo se generan con un `forValue(String)` que **lanza** ante un valor
+que no conoce, en vez de degradar:
+
+    public static FailureReasonType forValue(java.lang.String) throws java.io.IOException;
 
 No hay `@JsonEnumDefaultValue`, y el `ObjectMapper` de `Converter` sólo configura
 `FAIL_ON_UNKNOWN_PROPERTIES` — que cubre propiedades desconocidas, no valores de enum
-desconocidos. **Los 8 enums de `com.khipu.khenshin.protocol` (1.0.59) tienen la misma
-firma**, así que no es un caso suelto sino el patrón del generador.
+desconocidos. **Los 8 enums de `com.khipu.khenshin.protocol` tienen la misma firma**, así
+que es el patrón del generador y la superficie es el protocolo entero.
 
-Consecuencia: el día que el backend agregue un valor nuevo, todo comercio con una
-versión anterior del SDK instalada se rompe. Y para `FailureReasonType`, se rompe
-exactamente cuando el pago está fallando.
+Acá sí fallan las dos plataformas, por caminos opuestos: en Android la excepción sale sin
+atrapar en el `EventThread` de socket.io y **muere el proceso**; en iOS
+`KhipuSocketIOClient.swift:276-291` decodifica dentro de un `do/catch` que sólo imprime,
+así que **la UI queda colgada** —`operationFinished` nunca se setea, `onComplete` nunca
+corre— y el pagador se queda en una pantalla sin salida. iOS no revienta: los 12 `try!`
+del cliente están todos en `MockDataGenerator.swift`, código de previews.
 
-**Y el desfase ya está distribuyéndose, no es hipotético.** Las dos librerías que este
-plugin fija hoy no declaran el mismo conjunto de valores:
-
-| | Versión | Constantes de `FailureReasonType` |
-|---|---|---|
-| Android | `com.khipu.khenshin:protocol` 1.0.59 | 14 |
-| iOS | `KhenshinProtocolSwift` 1.0.60 | 15 |
-
-Android es un **subconjunto estricto**: los 14 están en iOS, y el que falta es
-`USER_DISCONNECTED`. El cliente iOS además ramifica sobre él en `FieldUtils.swift:89`,
-así que no es una constante muerta reservada para después.
-
-Lo que **no** se puede verificar desde acá, y por eso es la primera pregunta del ticket:
-si el backend ya emite `USER_DISCONNECTED` dentro de un `OperationFailure`. Si lo hace,
-esto no es un riesgo a futuro — es un crash en producción de Android, hoy, con las
-versiones que este plugin fija.
-
-**Las dos plataformas cuelgan el `Future`, por caminos opuestos:**
-
-| | Qué pasa | Efecto |
-|---|---|---|
-| Android | Excepción no atrapada en el `EventThread` de socket.io | **Muere el proceso.** No queda a quién responderle |
-| iOS | `KhipuSocketIOClient.swift:276-291` decodifica dentro de un `do/catch` que sólo imprime | **La UI queda colgada.** `operationFinished` nunca se setea, `onComplete` nunca corre |
-
-iOS no revienta —los 12 `try!` del cliente están todos en `MockDataGenerator.swift`,
-código de previews— pero tampoco sale: el pagador se queda en una pantalla sin salida.
-
-**Ninguna de las dos es defendible desde el plugin.** En Android no hay proceso donde
-correr un `catch`; en iOS el error se traga dentro del SDK, antes de cualquier código
-nuestro. Es la única forma de colgar el `Future` que el Ciclo 1 no puede cerrar, y por
-eso encabeza el ticket upstream de §6.
+Esto no es defendible desde el plugin: en Android no hay proceso donde correr un `catch`,
+y en iOS el error se traga dentro del SDK antes de cualquier código nuestro. Se arregla en
+el generador, y va al ticket de §6.
 
 ---
 
@@ -348,19 +355,18 @@ Dos cosas a verificar **antes** de escribirlo, o el CI nace rojo:
 No bloquea este ciclo, pero el primer punto no es menor y va a los equipos de
 `khenshin-protocol`, `khipu-client-android` y `KhipuClientIOS` a la vez:
 
-1. **La incompatibilidad hacia adelante de §2.6, empezando por la pregunta concreta:
-   ¿el backend emite ya `USER_DISCONNECTED` en un `OperationFailure`?** Android 1.0.59
-   no lo conoce e iOS 1.0.60 sí, así que la respuesta decide si esto es deuda o un
-   incidente. El argumento a poner primero no es el crash: es que el síntoma aparece en
-   el dispositivo del pagador y no en el deploy, así que quien agregue un valor no verá
-   nada roto en su CI ni en sus métricas. Un valor de enum nuevo mata el proceso en
-   Android y cuelga la UI en iOS, en las 8 enumeraciones del protocolo. El arreglo es del generador, no de los puentes: `@JsonEnumDefaultValue`
-   más `READ_UNKNOWN_ENUM_VALUES_AS_NULL` en Android, y un caso `unknown` en los enums
-   Swift. Mientras no exista, agregar un valor al backend es un cambio rompedor para
-   todo comercio ya instalado.
-2. Qué bancos gatillan el paso de geolocalización, para poder documentarlo con
+1. **§2.6.b, la degradación del generador.** Un valor de enum que el cliente no conozca
+   mata el proceso en Android y cuelga la UI en iOS, en las 8 enumeraciones del protocolo.
+   El arreglo es `@JsonEnumDefaultValue` más `READ_UNKNOWN_ENUM_VALUES_AS_NULL` del lado
+   Java, y un caso `unknown` en los enums Swift. El argumento a poner primero no es el
+   crash: es que **el síntoma aparece en el dispositivo del pagador y no en el deploy**,
+   así que quien agregue un valor no verá nada roto en su CI ni en sus métricas.
+2. **Que `khipu-client-android` suba su propio pin a `protocol:1.0.60`**, para que el
+   override de §2.6.a pueda retirarse. Y de paso: ¿el backend ya emite `USER_DISCONNECTED`
+   en un `OperationFailure`?
+3. Qué bancos gatillan el paso de geolocalización, para poder documentarlo con
    precisión en vez de en general.
-3. Que la matriz de salidas de §2.2 pase a ser contrato documentado. Hoy se conoce
+4. Que la matriz de salidas de §2.2 pase a ser contrato documentado. Hoy se conoce
    sólo por lectura de bytecode, y el refuerzo del plugin depende de que se mantenga.
 
 ---
@@ -448,7 +454,7 @@ Ningún ciclo se da por cerrado sin esto.
 
 - Remover los permisos de ubicación del manifest fusionado (§2.5).
 - Cambiar el comportamiento del SDK Android o iOS.
-- Defenderse de §2.6. No hay defensa posible desde el plugin; va por el ticket de §6.
+- Defenderse de §2.6.b. No hay defensa posible desde el plugin; va por el ticket de §6.
 - Una API de cancelación programática desde Dart.
 - Tests de integración con `integration_test`, pese a estar declarado en el
   `dev_dependencies` del example.
