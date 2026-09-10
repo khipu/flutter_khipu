@@ -3,7 +3,7 @@ package com.khipu.flutter_khipu
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
-import android.util.Log
+import android.os.Build
 import com.khipu.client.KHIPU_RESULT_EXTRA
 import com.khipu.client.KhipuOptions
 import com.khipu.client.KhipuResult
@@ -80,36 +80,65 @@ class FlutterKhipuPlugin : FlutterPlugin, MethodCallHandler, PluginRegistry.Acti
     }
 
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?): Boolean {
-        if (requestCode == KHIPU_START_OPERATION_CODE) {
-            val result = pendingResult
-            if (result == null) {
-                Log.e("FlutterKhipuPlugin", "Result callback invoked but pendingResult not initialized")
-                return false
-            }
-            if (data != null) {
-                val khipuResult = data.getSerializableExtra(KHIPU_RESULT_EXTRA) as KhipuResult
+    /**
+     * Responde la operación en vuelo exactamente una vez y limpia el estado.
+     *
+     * Devuelve false si no había ninguna, para que el listener no reclame un
+     * resultado que no le corresponde.
+     */
+    private fun respondOnce(block: (Result) -> Unit): Boolean {
+        val result = pendingResult ?: return false
+        pendingResult = null
+        block(result)
+        return true
+    }
 
-                val resultMap = HashMap<String, Any>()
-                resultMap["operationId"] = khipuResult.operationId
-                resultMap["result"] = khipuResult.result
-                resultMap["exitTitle"] = khipuResult.exitTitle
-                resultMap["exitMessage"] = khipuResult.exitMessage
-                khipuResult.exitUrl?.let { resultMap["exitUrl"] = it }
-                khipuResult.failureReason?.let { resultMap["failureReason"] = it }
-                khipuResult.continueUrl?.let { resultMap["continueUrl"] = it }
-                resultMap["events"] = khipuResult.events.map { event ->
-                    hashMapOf(
-                        "name" to event.name,
-                        "type" to event.type,
-                        "timestamp" to event.timestamp
-                    )
-                }
-                result.success(resultMap)
-                return true
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?): Boolean {
+        if (requestCode != KHIPU_START_OPERATION_CODE) return false
+
+        // Decide el payload, nunca el resultCode: las dos salidas del SDK traen un
+        // KhipuResult completo, y RESULT_CANCELED es sólo la restauración tardía
+        // tras una muerte de proceso. Ramificar por el código haría que el mismo
+        // desenlace llegara al comercio de dos formas distintas.
+        val khipuResult = runCatching { data?.khipuResult() }.getOrNull()
+
+        return respondOnce { result ->
+            if (khipuResult == null) {
+                result.error("NO_RESULT", "Khipu returned without a result", null)
+            } else {
+                result.success(khipuResult.toMap())
             }
         }
-        return false
+    }
+
+    private fun Intent.khipuResult(): KhipuResult? =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            getSerializableExtra(KHIPU_RESULT_EXTRA, KhipuResult::class.java)
+        } else {
+            @Suppress("DEPRECATION")
+            getSerializableExtra(KHIPU_RESULT_EXTRA) as? KhipuResult
+        }
+
+    // Nota: se preserva deliberadamente el estilo de asignación indexada e infix
+    // (en vez de un builder con una función put) porque
+    // test/method_channel_seam_test.dart extrae las claves de esta función con una
+    // regex que reconoce esos dos idioms, no una llamada a función. El contrato de
+    // claves es el mismo; sólo cambia la sintaxis para seguir siendo legible por
+    // ese test.
+    private fun KhipuResult.toMap(): Map<String, Any?> {
+        val map = mutableMapOf<String, Any?>(
+            "operationId" to operationId,
+            "result" to result,
+            "exitTitle" to exitTitle,
+            "exitMessage" to exitMessage,
+            "events" to events.map { event ->
+                mapOf("name" to event.name, "type" to event.type, "timestamp" to event.timestamp)
+            }
+        )
+        exitUrl?.let { map["exitUrl"] = it }
+        failureReason?.let { map["failureReason"] = it }
+        continueUrl?.let { map["continueUrl"] = it }
+        return map
     }
 
 

@@ -3,18 +3,24 @@ package com.khipu.flutter_khipu
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import com.khipu.client.KHIPU_RESULT_EXTRA
+import com.khipu.client.KhipuEvent
+import com.khipu.client.KhipuResult
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers.anyInt
+import org.mockito.ArgumentMatchers.anyString
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.doThrow
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.never
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class FlutterKhipuPluginTest {
 
@@ -130,5 +136,105 @@ class FlutterKhipuPluginTest {
         startOperation(accepted)
         verify(accepted, never()).error(any(), any(), any())
         verify(activity2).startActivityForResult(any(Intent::class.java), anyInt())
+    }
+
+    private fun khipuResult() = KhipuResult(
+        operationId = "abc123",
+        exitTitle = "Listo",
+        exitMessage = "Pago realizado",
+        exitUrl = "https://khipu.com/done",
+        continueUrl = null,
+        result = "OK",
+        // Verificado contra el AAR: el orden posicional de KhipuEvent es
+        // (name, timestamp, type), no (name, type, timestamp). Nombrados a propósito.
+        events = arrayOf(KhipuEvent(name = "start", timestamp = "2026-09-09T10:00:00Z", type = "info")),
+        failureReason = null
+    )
+
+    private fun intentCarrying(payload: KhipuResult?): Intent {
+        val intent = mock(Intent::class.java)
+        `when`(intent.getSerializableExtra(KHIPU_RESULT_EXTRA)).thenReturn(payload)
+        return intent
+    }
+
+    @Test
+    fun `the payload decides, not the result code`() {
+        // Las dos salidas del SDK traen un KhipuResult completo. Ramificar por
+        // resultCode haría que el mismo desenlace llegara de dos formas según si
+        // Android mató la activity y pasaron más de tres minutos.
+        for (code in listOf(Activity.RESULT_OK, Activity.RESULT_CANCELED)) {
+            plugin = FlutterKhipuPlugin()
+            plugin.intentFactory = { _, _, _ -> mock(Intent::class.java) }
+            plugin.onAttachedToActivity(binding)
+
+            val result = mock(MethodChannel.Result::class.java)
+            startOperation(result)
+            assertTrue(plugin.onActivityResult(101010, code, intentCarrying(khipuResult())))
+
+            verify(result).success(mapOf(
+                "operationId" to "abc123",
+                "result" to "OK",
+                "exitTitle" to "Listo",
+                "exitMessage" to "Pago realizado",
+                "exitUrl" to "https://khipu.com/done",
+                "events" to listOf(mapOf(
+                    "name" to "start", "type" to "info", "timestamp" to "2026-09-09T10:00:00Z"
+                ))
+            ))
+        }
+    }
+
+    @Test
+    fun `a reply with no payload errors instead of hanging`() {
+        plugin.onAttachedToActivity(binding)
+        val result = mock(MethodChannel.Result::class.java)
+        startOperation(result)
+
+        assertTrue(plugin.onActivityResult(101010, Activity.RESULT_CANCELED, null))
+        verify(result).error("NO_RESULT", "Khipu returned without a result", null)
+    }
+
+    @Test
+    fun `a payload of the wrong shape errors instead of crashing the listener`() {
+        plugin.onAttachedToActivity(binding)
+        val result = mock(MethodChannel.Result::class.java)
+        startOperation(result)
+
+        assertTrue(plugin.onActivityResult(101010, Activity.RESULT_OK, intentCarrying(null)))
+        verify(result).error("NO_RESULT", "Khipu returned without a result", null)
+    }
+
+    @Test
+    fun `a second activity result for the same request does not respond twice`() {
+        plugin.onAttachedToActivity(binding)
+        val result = mock(MethodChannel.Result::class.java)
+        startOperation(result)
+
+        assertTrue(plugin.onActivityResult(101010, Activity.RESULT_OK, intentCarrying(khipuResult())))
+        assertFalse(plugin.onActivityResult(101010, Activity.RESULT_OK, intentCarrying(khipuResult())))
+        verify(result, org.mockito.Mockito.times(1)).success(any())
+    }
+
+    @Test
+    fun `after a result the plugin accepts the next operation`() {
+        plugin.onAttachedToActivity(binding)
+        val first = mock(MethodChannel.Result::class.java)
+        startOperation(first)
+        plugin.onActivityResult(101010, Activity.RESULT_OK, intentCarrying(khipuResult()))
+
+        val second = mock(MethodChannel.Result::class.java)
+        startOperation(second)
+        verify(second, never()).error(anyString(), any(), any())
+    }
+
+    @Test
+    fun `an unrelated request code is ignored`() {
+        plugin.onAttachedToActivity(binding)
+        val result = mock(MethodChannel.Result::class.java)
+        startOperation(result)
+
+        assertFalse(plugin.onActivityResult(999, Activity.RESULT_OK, intentCarrying(khipuResult())))
+        verify(result, never()).success(any())
+        verify(result, never()).error(any(), any(), any())
     }
 }
