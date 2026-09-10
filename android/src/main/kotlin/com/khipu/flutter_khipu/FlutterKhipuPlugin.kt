@@ -4,8 +4,6 @@ import android.app.Activity
 import android.content.Intent
 import android.util.Log
 import com.khipu.client.KHIPU_RESULT_EXTRA
-import com.khipu.client.KhipuColors
-import com.khipu.client.KhipuOptions
 import com.khipu.client.KhipuResult
 import com.khipu.client.getKhipuLauncherIntent
 
@@ -49,96 +47,11 @@ class FlutterKhipuPlugin : FlutterPlugin, MethodCallHandler, PluginRegistry.Acti
 
         val operationId = call.argument<String>("operationId")!!
 
-        val optionsBuilder = KhipuOptions.Builder()
-
-        call.argument<String>("title")?.let {
-            optionsBuilder.topBarTitle = it
-        }
-
-        call.argument<String>("titleImageUrl")?.let {
-            optionsBuilder.topBarImageUrl = it
-        }
-
-        call.argument<String>("locale")?.let {
-            optionsBuilder.locale = it
-        }
-
-        call.argument<Boolean>("skipExitPage")?.let {
-            optionsBuilder.skipExitPage = it
-        }
-
-        call.argument<Boolean>("skipExitSuccessPage")?.let {
-            optionsBuilder.skipExitSuccessPage = it
-        }
-
-        call.argument<Boolean>("showFooter")?.let {
-            optionsBuilder.showFooter = it
-        }
-
-        call.argument<Boolean>("showMerchantLogo")?.let {
-            optionsBuilder.showMerchantLogo = it
-        }
-
-        call.argument<Boolean>("showPaymentDetails")?.let {
-            optionsBuilder.showPaymentDetails = it
-        }
-
-        call.argument<String>("theme")?.let {
-            if (it == "light") {
-                optionsBuilder.theme = KhipuOptions.Theme.LIGHT
-            } else if (it == "dark") {
-                optionsBuilder.theme = KhipuOptions.Theme.DARK
-            } else if (it == "system") {
-                optionsBuilder.theme = KhipuOptions.Theme.SYSTEM
-            }
-        }
-
-        val colorsBuilder = KhipuColors.Builder()
-
-        call.argument<String>("lightPrimary")?.let {
-            colorsBuilder.lightPrimary = it
-        }
-        call.argument<String>("lightOnPrimary")?.let {
-            colorsBuilder.lightOnPrimary = it
-        }
-        call.argument<String>("lightBackground")?.let {
-            colorsBuilder.lightBackground = it
-        }
-        call.argument<String>("lightOnBackground")?.let {
-            colorsBuilder.lightOnBackground = it
-        }
-        call.argument<String>("lightTopBarContainer")?.let {
-            colorsBuilder.lightTopBarContainer = it
-        }
-        call.argument<String>("lightOnTopBarContainer")?.let {
-            colorsBuilder.lightOnTopBarContainer = it
-        }
-        call.argument<String>("darkPrimary")?.let {
-            colorsBuilder.darkPrimary = it
-        }
-        call.argument<String>("darkOnPrimary")?.let {
-            colorsBuilder.darkOnPrimary = it
-        }
-        call.argument<String>("darkBackground")?.let {
-            colorsBuilder.darkBackground = it
-        }
-        call.argument<String>("darkOnBackground")?.let {
-            colorsBuilder.darkOnBackground = it
-        }
-        call.argument<String>("darkTopBarContainer")?.let {
-            colorsBuilder.darkTopBarContainer = it
-        }
-        call.argument<String>("darkOnTopBarContainer")?.let {
-            colorsBuilder.darkOnTopBarContainer = it
-        }
-        optionsBuilder.colors = colorsBuilder.build()
-
-
         val intent = activity?.let {
             getKhipuLauncherIntent(
                 context = it.baseContext,
                 operationId = operationId,
-                options = optionsBuilder.build()
+                options = buildKhipuOptions(call)
             )
 
         }
