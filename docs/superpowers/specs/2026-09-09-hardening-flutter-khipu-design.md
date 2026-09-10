@@ -134,28 +134,35 @@ distintos.
 | `USER_DISCONNECTED` | **crashea, mata el proceso** | decodifica bien |
 | Un valor que ninguna conoce | **crashea, mata el proceso** | se lo traga y cuelga la UI |
 
-#### 2.6.a Desfase de versión — vivo, sólo Android, y a nuestro alcance
+#### 2.6.a Desfase de versión — vivo, sólo Android, y ya resuelto upstream
 
-`khipu-client-android:2.27.0` —la última publicada— declara
+`khipu-client-android:2.27.0`, el pin de ambas ramas, declara
 `com.khipu.khenshin:protocol:1.0.59` como dependencia runtime. Ese jar tiene **14**
 constantes de `FailureReasonType`. El `KhenshinProtocolSwift` 1.0.60 que fija iOS tiene
 **15**. Android es un subconjunto estricto y el que falta es `USER_DISCONNECTED`, sobre
 el que el cliente iOS además ya ramifica en `FieldUtils.swift:89`.
 
-No hay que esperar a upstream. **`protocol:1.0.60` existe publicado para Android**, y el
-diff de su API pública contra 1.0.59 es exactamente una línea agregada y ninguna quitada:
+**`khipu-client-android:2.28.0` cierra esto y es el arreglo correcto.** Su POM fija
+`protocol:1.0.60`, y el diff contra 2.27.0 se verificó completo antes de adoptarlo:
 
-    > public static final FailureReasonType USER_DISCONNECTED;
+| | Resultado |
+|---|---|
+| `AndroidManifest.xml` | **idéntico** — mismos permisos, misma `KhipuActivity` |
+| API pública del AAR (3834 líneas de `javap`) | **idéntica**, cero agregado, cero quitado |
+| `protocol` | 1.0.59 → 1.0.60, que agrega `USER_DISCONNECTED` y nada más |
 
-Puramente aditivo, o sea binariamente compatible: `khipu-client-android:2.27.0`,
-compilado contra 1.0.59, corre igual contra 1.0.60. Declarar la dependencia directa en
-`android/build.gradle` la sube por resolución de conflictos de Gradle. Ninguna de las dos
-ramas declara hoy nada de `khenshin`, y las dos fijan el cliente 2.27.0, así que el
-arreglo es idéntico en ambas. Entra al Ciclo 1 y a 1.7.2.
+O sea: 2.28.0 es 2.27.0 con el pin del protocolo subido. Eso deja intacta la matriz de
+§2.2 (se reconfirmó que `BackHandlerKt.BackHandler` sigue en `KhipuActivityKt` del AAR
+nuevo) y la sección de permisos de §2.5.
+
+Una versión anterior de este spec proponía forzar `protocol:1.0.60` por resolución de
+conflictos de Gradle, dejando el cliente en 2.27.0. Con 2.28.0 publicada eso ya no
+corresponde: subir el cliente evita cargar un override que después habría que acordarse
+de retirar. Entra al Ciclo 1 y a 1.7.2.
 
 Lo que sigue sin poder verificarse desde acá: si el backend ya emite `USER_DISCONNECTED`
-dentro de un `OperationFailure`. Eso decide si esto era un incidente abierto o deuda —
-pero como el arreglo cuesta una línea verificada, se aplica igual sin esperar la respuesta.
+dentro de un `OperationFailure`. Eso decide si esto era un incidente abierto o deuda,
+pero no cambia qué hay que hacer.
 
 #### 2.6.b Degradación ante valores desconocidos — latente, ambas, fuera de alcance
 
@@ -361,9 +368,9 @@ No bloquea este ciclo, pero el primer punto no es menor y va a los equipos de
    Java, y un caso `unknown` en los enums Swift. El argumento a poner primero no es el
    crash: es que **el síntoma aparece en el dispositivo del pagador y no en el deploy**,
    así que quien agregue un valor no verá nada roto en su CI ni en sus métricas.
-2. **Que `khipu-client-android` suba su propio pin a `protocol:1.0.60`**, para que el
-   override de §2.6.a pueda retirarse. Y de paso: ¿el backend ya emite `USER_DISCONNECTED`
-   en un `OperationFailure`?
+2. ¿El backend ya emite `USER_DISCONNECTED` en un `OperationFailure`? No cambia qué
+   hacemos —2.28.0 se adopta igual— pero decide si §2.6.a fue un incidente abierto o
+   deuda, y eso es lo que hay que saber para el post mortem.
 3. Qué bancos gatillan el paso de geolocalización, para poder documentarlo con
    precisión en vez de en general.
 4. Que la matriz de salidas de §2.2 pase a ser contrato documentado. Hoy se conoce
@@ -469,5 +476,5 @@ Ningún ciclo se da por cerrado sin esto.
 - `ios/flutter_khipu/Sources/flutter_khipu/FlutterKhipuPlugin.swift`
 - `test/method_channel_seam_test.dart` — el seam test que Pigeon deja obsoleto
 - `docs/superpowers/specs/2026-09-04-spm-flutter-khipu-design.md` — migración a SPM
-- AAR `com.khipu:khipu-client-android:2.27.0`, caché de Gradle
+- AAR `com.khipu:khipu-client-android` 2.27.0 y 2.28.0, y `com.khipu.khenshin:protocol` 1.0.59 y 1.0.60
 - Checkout SPM de `KhipuClientIOS` 2.16.5 en `ios/flutter_khipu/.build/checkouts/`

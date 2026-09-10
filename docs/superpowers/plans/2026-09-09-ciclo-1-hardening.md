@@ -876,9 +876,9 @@ an operation in flight instead of leaving the Future unresolved."
 
 ---
 
-### Task 6: Subir `khenshin-protocol` a 1.0.60
+### Task 6: Subir `khipu-client-android` a 2.28.0
 
-Cierra §2.6.a del spec. Es el único defecto de este ciclo que hoy mata el proceso de la app del comercio, y el arreglo es una línea.
+Cierra §2.6.a del spec. Es el único defecto de este ciclo que hoy mata el proceso de la app del comercio.
 
 **Files:**
 - Modify: `android/build.gradle`
@@ -887,7 +887,7 @@ Cierra §2.6.a del spec. Es el único defecto de este ciclo que hoy mata el proc
 - Consumes: nada.
 - Produces: nada.
 
-- [ ] **Step 1: Confirmar la versión transitiva actual**
+- [ ] **Step 1: Confirmar el estado actual**
 
 ```bash
 cd example/android && ./gradlew :flutter_khipu:dependencies --configuration releaseRuntimeClasspath | grep khenshin
@@ -895,55 +895,52 @@ cd example/android && ./gradlew :flutter_khipu:dependencies --configuration rele
 
 Esperado: `com.khipu.khenshin:protocol:1.0.59`, traída por `khipu-client-android:2.27.0`.
 
-- [ ] **Step 2: Declarar la dependencia directa**
+- [ ] **Step 2: Subir el pin del cliente**
 
-En `android/build.gradle`, dentro del bloque `dependencies`, junto a la del cliente:
+En `android/build.gradle`, dentro de `dependencies`:
 
 ```groovy
-        implementation 'com.khipu:khipu-client-android:2.27.0'
-        // khipu-client-android 2.27.0 arrastra protocol 1.0.59, que no conoce
-        // FailureReasonType.USER_DISCONNECTED. El enum lo deserializa un forValue
-        // generado que LANZA ante un valor desconocido, y la excepción sale sin
-        // atrapar en el EventThread de socket.io: muere el proceso de la app.
-        // 1.0.60 agrega esa constante y nada más — el diff de su API pública contra
-        // 1.0.59 es una línea agregada, cero quitadas — así que es binariamente
-        // compatible con el cliente, que fue compilado contra 1.0.59.
-        // Retirar cuando khipu-client-android suba su propio pin.
-        implementation 'com.khipu.khenshin:protocol:1.0.60'
+        // 2.27.0 arrastraba protocol 1.0.59, cuyo FailureReasonType no conoce
+        // USER_DISCONNECTED — un valor que la librería de iOS sí tiene. El enum lo
+        // deserializa un forValue generado que LANZA ante un valor desconocido, y en
+        // Android esa excepción sale sin atrapar en el EventThread de socket.io y se
+        // lleva el proceso de la app. 2.28.0 fija protocol 1.0.60, que agrega esa
+        // constante y nada más.
+        implementation 'com.khipu:khipu-client-android:2.28.0'
 ```
 
-- [ ] **Step 3: Verificar que la resolución subió y nada más se movió**
+- [ ] **Step 3: Verificar que subió el protocolo y nada más se movió**
 
 ```bash
-cd example/android && ./gradlew :flutter_khipu:dependencies --configuration releaseRuntimeClasspath | grep khenshin
+cd example/android && ./gradlew :flutter_khipu:dependencies --configuration releaseRuntimeClasspath | grep -E "khipu|khenshin"
 ```
 
-Esperado: `protocol:1.0.59 -> 1.0.60` (Gradle marca así el override). Ninguna otra dependencia cambia de versión.
+Esperado: `khipu-client-android:2.28.0` y `protocol:1.0.60`. `khenshin-java-securemessage` sigue en `4.0.0.32` y `kotlin-stdlib` en `2.0.21` — si alguno se movió, parar y revisar, porque el POM de 2.28.0 no los cambia.
 
-- [ ] **Step 4: Verificar que el cliente sigue compilando y corriendo contra el jar nuevo**
+- [ ] **Step 4: Verificar que compila y los tests siguen verdes**
 
 ```bash
 cd example/android && ./gradlew :flutter_khipu:test
 cd .. && flutter build apk --debug
 ```
 
-Esperado: 20 tests en verde y APK construido.
+Esperado: 20 tests en verde y APK construido. La API pública del AAR es idéntica entre 2.27.0 y 2.28.0 (verificado con `javap`, 3834 líneas, diff vacío), así que nada del plugin debería necesitar cambios.
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add android/build.gradle
-git commit -m "fix(android): pull khenshin-protocol 1.0.60 for USER_DISCONNECTED
+git commit -m "fix(android): move to khipu-client-android 2.28.0
 
-khipu-client-android 2.27.0 pins protocol 1.0.59, whose FailureReasonType has
-14 constants against the 15 the iOS protocol library ships. The missing one is
+2.27.0 pinned khenshin protocol 1.0.59, whose FailureReasonType has 14
+constants against the 15 the iOS protocol library ships. The missing one is
 USER_DISCONNECTED, and an unknown value does not degrade: the generated
 forValue throws, and on Android that throw escapes uncaught on socket.io's
-EventThread and takes the process with it.
+EventThread and takes the host app's process with it.
 
-1.0.60 adds that constant and nothing else — one line added to the public API,
-none removed — so it is binary compatible with a client compiled against
-1.0.59. Revert once khipu-client-android raises its own pin."
+2.28.0 is 2.27.0 with that pin raised to 1.0.60. Verified before adopting:
+the AAR manifest is identical, the public API is identical across all 3834
+lines javap reports, and 1.0.60 adds USER_DISCONNECTED and nothing else."
 ```
 
 ---
