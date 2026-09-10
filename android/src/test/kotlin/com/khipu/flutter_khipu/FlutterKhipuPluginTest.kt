@@ -17,6 +17,7 @@ import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.doThrow
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.never
+import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
 import kotlin.test.assertFalse
@@ -200,8 +201,39 @@ class FlutterKhipuPluginTest {
         val result = mock(MethodChannel.Result::class.java)
         startOperation(result)
 
-        assertTrue(plugin.onActivityResult(101010, Activity.RESULT_OK, intentCarrying(null)))
+        val intent = mock(Intent::class.java)
+        // Un extra de una clase inesperada — String también es Serializable — es
+        // justo lo que el cast duro original (`as KhipuResult`) no toleraba: tiraba
+        // ClassCastException dentro del listener sin responder nunca. El `as?` de la
+        // reescritura debe convertirlo en null en silencio, no en una excepción.
+        `when`(intent.getSerializableExtra(KHIPU_RESULT_EXTRA)).thenReturn("not a KhipuResult")
+
+        assertTrue(plugin.onActivityResult(101010, Activity.RESULT_OK, intent))
         verify(result).error("NO_RESULT", "Khipu returned without a result", null)
+    }
+
+    @Test
+    fun `a payload that fails to deserialize errors, and leaves the plugin usable for the next operation`() {
+        plugin.onAttachedToActivity(binding)
+        val result = mock(MethodChannel.Result::class.java)
+        startOperation(result)
+
+        val intent = mock(Intent::class.java)
+        // A diferencia del test anterior (un valor presente pero de otra clase), acá
+        // la propia lectura del extra lanza — la falla real que el `runCatching`
+        // existe para atrapar. Sin él, esto escaparía del listener sin llamar ni
+        // success ni error, colgando el Future de Dart para siempre.
+        `when`(intent.getSerializableExtra(KHIPU_RESULT_EXTRA)).thenThrow(RuntimeException("boom"))
+
+        assertTrue(plugin.onActivityResult(101010, Activity.RESULT_OK, intent))
+        verify(result).error("NO_RESULT", "Khipu returned without a result", null)
+
+        // Lo que más importa: atrapar la excepción no alcanza si deja pendingResult
+        // sucio. Sin este assert, el test no distingue "atrapó y respondió" de
+        // "atrapó y dejó el estado envenenado para la próxima operación".
+        val second = mock(MethodChannel.Result::class.java)
+        startOperation(second)
+        verify(second, never()).error(anyString(), any(), any())
     }
 
     @Test
@@ -212,7 +244,7 @@ class FlutterKhipuPluginTest {
 
         assertTrue(plugin.onActivityResult(101010, Activity.RESULT_OK, intentCarrying(khipuResult())))
         assertFalse(plugin.onActivityResult(101010, Activity.RESULT_OK, intentCarrying(khipuResult())))
-        verify(result, org.mockito.Mockito.times(1)).success(any())
+        verify(result, times(1)).success(any())
     }
 
     @Test
