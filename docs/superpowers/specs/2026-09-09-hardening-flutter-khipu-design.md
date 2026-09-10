@@ -158,11 +158,48 @@ nuevo) y la sección de permisos de §2.5.
 Una versión anterior de este spec proponía forzar `protocol:1.0.60` por resolución de
 conflictos de Gradle, dejando el cliente en 2.27.0. Con 2.28.0 publicada eso ya no
 corresponde: subir el cliente evita cargar un override que después habría que acordarse
-de retirar. Entra al Ciclo 1 y a 1.7.2.
+de retirar.
+
+**El pin final es 2.28.1, no 2.28.0.** Se publicó durante la ejecución de este ciclo y
+agrega el guard de §2.6.b-bis. Verificada con el mismo método antes de adoptarla:
+
+| | 2.28.1 vs 2.28.0 |
+|---|---|
+| `AndroidManifest.xml` | **idéntico** |
+| API pública quitada | **ninguna** — los 23 `addListeners$lambda$N` sólo cambian `void` → `kotlin.Unit` por pasarse ahora como `Function0` |
+| API pública agregada | `onMessage(String, Function1<…>)` privado, y la clase nueva `SocketMessageGuardKt` con `runGuarded(…)` y un set `terminalMessageTypes` |
+| `protocol` | sigue en 1.0.60 |
+| `BackHandlerKt.BackHandler` | sigue presente |
+
+Entra al Ciclo 1 y a 1.7.2.
 
 Lo que sigue sin poder verificarse desde acá: si el backend ya emite `USER_DISCONNECTED`
 dentro de un `OperationFailure`. Eso decide si esto era un incidente abierto o deuda,
 pero no cambia qué hay que hacer.
+
+#### 2.6.b-bis Lo que arregla 2.28.1, y lo que deja abierto
+
+El equipo de `khipu-client-android` cerró la mitad que mata el proceso: los 23 listeners
+de `addListeners` pasan ahora por un `onMessage()` que corre el handler dentro de
+`runGuarded()`, atrapando `Throwable` antes de que llegue al `EventThread` de socket.io.
+Un valor de enum desconocido ya no puede matar la app del comercio.
+
+Contrato entrante que el plugin debe tolerar, y que se verificó ya cubierto:
+
+| Mensaje que no deserializa | Comportamiento | Qué exige del plugin |
+|---|---|---|
+| Terminal (`OPERATION_FAILURE`, `_SUCCESS`, `_MUST_CONTINUE`) | La operación termina y el callback dispara, pero el `KhipuResult` puede venir sin detalle de la falla | Tolerar `failureReason` ausente |
+| No terminal (`FORM_REQUEST`, `TRANSLATION`, …) | Se loggea y se ignora; la operación sigue | Nada — pero ver abajo |
+
+Lo primero **ya está cubierto en las tres capas**, verificado y no supuesto:
+`failureReason?.let { … }` en el mapeo de resultado de Android, `String?` en
+`lib/flutter_khipu.dart:89`, y el `?.let` equivalente en el `toMap()` de este ciclo.
+
+Lo segundo tiene un costo que 2.28.1 no elimina: si el mensaje que falla es un
+`FORM_REQUEST`, el pagador queda esperando un formulario que no se va a renderizar. Sin
+crash, y sin salida. **Es una forma de colgar que sobrevive al arreglo**, sigue sin ser
+defendible desde el plugin, y refuerza que el frente del generador es el que cierra la
+clase completa.
 
 #### 2.6.b Degradación ante valores desconocidos — latente, ambas, fuera de alcance
 
@@ -359,10 +396,13 @@ Dos cosas a verificar **antes** de escribirlo, o el CI nace rojo:
 
 ### Ticket upstream
 
-No bloquea este ciclo, pero el primer punto no es menor y va a los equipos de
-`khenshin-protocol`, `khipu-client-android` y `KhipuClientIOS` a la vez:
+**El ticket ya existe: IKW-1232**, único para los cuatro puentes (Flutter, React Native,
+Cordova, Capacitor). No hay que abrir otro. Su "frente 1" —el guard de §2.6.b-bis— ya salió
+en 2.28.1. Lo que sigue abierto ahí, y es el aporte de este repositorio:
 
-1. **§2.6.b, la degradación del generador.** Un valor de enum que el cliente no conozca
+1. **§2.6.b, la degradación del generador.** Confirmado de forma independiente por el
+   equipo del SDK Android con los comandos de este repositorio; en IKW-1232 pasó de
+   "reportado por Flutter, sin verificar" a verificado. Un valor de enum que el cliente no conozca
    mata el proceso en Android y cuelga la UI en iOS, en las 8 enumeraciones del protocolo.
    El arreglo es `@JsonEnumDefaultValue` más `READ_UNKNOWN_ENUM_VALUES_AS_NULL` del lado
    Java, y un caso `unknown` en los enums Swift. El argumento a poner primero no es el

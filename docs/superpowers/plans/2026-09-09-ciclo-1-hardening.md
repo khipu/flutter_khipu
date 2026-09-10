@@ -876,7 +876,7 @@ an operation in flight instead of leaving the Future unresolved."
 
 ---
 
-### Task 6: Subir `khipu-client-android` a 2.28.0
+### Task 6: Subir `khipu-client-android` a 2.28.1
 
 Cierra §2.6.a del spec. Es el único defecto de este ciclo que hoy mata el proceso de la app del comercio.
 
@@ -904,9 +904,11 @@ En `android/build.gradle`, dentro de `dependencies`:
         // USER_DISCONNECTED — un valor que la librería de iOS sí tiene. El enum lo
         // deserializa un forValue generado que LANZA ante un valor desconocido, y en
         // Android esa excepción sale sin atrapar en el EventThread de socket.io y se
-        // lleva el proceso de la app. 2.28.0 fija protocol 1.0.60, que agrega esa
-        // constante y nada más.
-        implementation 'com.khipu:khipu-client-android:2.28.0'
+        // lleva el proceso de la app. 2.28.0 subió protocol a 1.0.60, que agrega esa
+        // constante y nada más; 2.28.1 agrega además un guard que atrapa Throwable
+        // antes del EventThread, así que un enum desconocido futuro tampoco mata el
+        // proceso. Ver IKW-1232.
+        implementation 'com.khipu:khipu-client-android:2.28.1'
 ```
 
 - [ ] **Step 3: Verificar que subió el protocolo y nada más se movió**
@@ -915,7 +917,7 @@ En `android/build.gradle`, dentro de `dependencies`:
 cd example/android && ./gradlew :flutter_khipu:dependencies --configuration releaseRuntimeClasspath | grep -E "khipu|khenshin"
 ```
 
-Esperado: `khipu-client-android:2.28.0` y `protocol:1.0.60`. `khenshin-java-securemessage` sigue en `4.0.0.32` y `kotlin-stdlib` en `2.0.21` — si alguno se movió, parar y revisar, porque el POM de 2.28.0 no los cambia.
+Esperado: `khipu-client-android:2.28.1` y `protocol:1.0.60`. `khenshin-java-securemessage` sigue en `4.0.0.32` y `kotlin-stdlib` en `2.0.21` — si alguno se movió, parar y revisar, porque el POM de 2.28.1 no los cambia.
 
 - [ ] **Step 4: Verificar que compila y los tests siguen verdes**
 
@@ -924,13 +926,13 @@ cd example/android && ./gradlew :flutter_khipu:test
 cd .. && flutter build apk --debug
 ```
 
-Esperado: 20 tests en verde y APK construido. La API pública del AAR es idéntica entre 2.27.0 y 2.28.0 (verificado con `javap`, 3834 líneas, diff vacío), así que nada del plugin debería necesitar cambios.
+Esperado: 20 tests en verde y APK construido. La API pública del AAR no pierde nada entre 2.27.0 y 2.28.1 (verificado con `javap`: 2.28.0 idéntica a 2.27.0; 2.28.1 sólo agrega el guard y cambia el tipo de retorno de 23 lambdas privados), así que nada del plugin debería necesitar cambios.
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add android/build.gradle
-git commit -m "fix(android): move to khipu-client-android 2.28.0
+git commit -m "fix(android): move to khipu-client-android 2.28.1
 
 2.27.0 pinned khenshin protocol 1.0.59, whose FailureReasonType has 14
 constants against the 15 the iOS protocol library ships. The missing one is
