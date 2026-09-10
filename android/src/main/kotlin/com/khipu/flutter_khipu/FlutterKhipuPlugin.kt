@@ -1,9 +1,11 @@
 package com.khipu.flutter_khipu
 
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.util.Log
 import com.khipu.client.KHIPU_RESULT_EXTRA
+import com.khipu.client.KhipuOptions
 import com.khipu.client.KhipuResult
 import com.khipu.client.getKhipuLauncherIntent
 
@@ -22,7 +24,19 @@ class FlutterKhipuPlugin : FlutterPlugin, MethodCallHandler, PluginRegistry.Acti
     private lateinit var channel: MethodChannel
     private var activity: Activity? = null
     private var pendingResult: Result? = null
-    private val KHIPU_START_OPERATION_CODE = 101010
+
+    /**
+     * Construye el intent que lanza Khipu.
+     *
+     * Es un seam inyectable, no un adorno: `getKhipuLauncherIntent` es una función
+     * de nivel superior del SDK que construye un `Intent` real, y ninguna de las
+     * dos cosas funciona en un test unitario de JVM. Sustituirlo acá es lo que
+     * hace testeable todo el camino de lanzamiento.
+     */
+    internal var intentFactory: (Context, String, KhipuOptions) -> Intent =
+        { context, operationId, options ->
+            getKhipuLauncherIntent(context = context, operationId = operationId, options = options)
+        }
 
     override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         channel = MethodChannel(flutterPluginBinding.binaryMessenger, "flutter_khipu")
@@ -37,25 +51,32 @@ class FlutterKhipuPlugin : FlutterPlugin, MethodCallHandler, PluginRegistry.Acti
         }
     }
 
-    fun startOperation(call: MethodCall, result: Result) {
-        this.pendingResult = result
+    private fun startOperation(call: MethodCall, result: Result) {
+        val activity = this.activity
+            ?: return result.error("NO_ACTIVITY", "A foreground activity is needed to start Khipu", null)
 
-        if (!call.hasArgument("operationId")) {
-            result.error("MISSING_OPERATION_ID", "OperationId is required", null)
-            return
+        if (pendingResult != null) {
+            return result.error("OPERATION_IN_PROGRESS", "A Khipu operation is already running", null)
         }
 
-        val operationId = call.argument<String>("operationId")!!
+        val operationId = call.argument<String>("operationId")
+            ?: return result.error("MISSING_OPERATION_ID", "OperationId is required", null)
 
-        val intent = activity?.let {
-            getKhipuLauncherIntent(
-                context = it.baseContext,
-                operationId = operationId,
-                options = buildKhipuOptions(call)
-            )
-
+        val intent = try {
+            intentFactory(activity.baseContext, operationId, buildKhipuOptions(call))
+        } catch (e: Exception) {
+            return result.error("INVALID_OPTIONS", e.message, null)
         }
-        activity?.startActivityForResult(intent, KHIPU_START_OPERATION_CODE)
+
+        // El callback se guarda lo más tarde posible. Todo lo que puede lanzar
+        // ya ocurrió arriba, y lo único que queda va dentro de un try que lo libera.
+        pendingResult = result
+        try {
+            activity.startActivityForResult(intent, KHIPU_START_OPERATION_CODE)
+        } catch (e: Exception) {
+            pendingResult = null
+            result.error("LAUNCH_FAILED", e.message, null)
+        }
     }
 
 
@@ -112,5 +133,9 @@ class FlutterKhipuPlugin : FlutterPlugin, MethodCallHandler, PluginRegistry.Acti
 
     override fun onDetachedFromActivity() {
         activity = null
+    }
+
+    companion object {
+        private const val KHIPU_START_OPERATION_CODE = 101010
     }
 }
