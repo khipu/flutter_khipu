@@ -940,9 +940,11 @@ USER_DISCONNECTED, and an unknown value does not degrade: the generated
 forValue throws, and on Android that throw escapes uncaught on socket.io's
 EventThread and takes the host app's process with it.
 
-2.28.0 is 2.27.0 with that pin raised to 1.0.60. Verified before adopting:
-the AAR manifest is identical, the public API is identical across all 3834
-lines javap reports, and 1.0.60 adds USER_DISCONNECTED and nothing else."
+2.28.0 raised that pin to 1.0.60; 2.28.1 additionally wraps every socket
+listener so a Throwable can no longer escape onto socket.io's EventThread.
+Verified before adopting: the AAR manifest is unchanged from 2.27.0, nothing
+was removed from the public API, and 1.0.60 adds USER_DISCONNECTED and
+nothing else. See IKW-1232."
 ```
 
 ---
