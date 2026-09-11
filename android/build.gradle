@@ -55,13 +55,13 @@ android {
         // deserializa un forValue generado que LANZA ante un valor desconocido, y en
         // Android esa excepción sale sin atrapar en el EventThread de socket.io y se
         // lleva el proceso de la app.
-        // 2.28.0 subió protocol a 1.0.60, que agrega esa constante; 2.28.1 agregó un
-        // guard que atrapa Throwable antes del EventThread; 2.28.2 hizo que asJson()
-        // serialice los nulos; y 2.28.3 agrega OPERATION_WARNING a los tipos terminales
-        // del guard — sin eso, un WARNING indescifrable no termina la operación y, con
-        // la guarda de concurrencia de este plugin, deja el plugin rechazando todo.
+        // 2.28.0 subió protocol a 1.0.60; 2.28.1 agregó el guard que atrapa Throwable
+        // antes del EventThread; 2.28.2 hizo que asJson() serialice los nulos; 2.28.3
+        // sumó OPERATION_WARNING a los tipos terminales; y 2.28.4 hace que el guard
+        // llame a returnToApp(), así que un mensaje terminal ilegible por fin devuelve
+        // resultado al comercio en vez de dejarlo sin callback.
         // Ver IKW-1232, IKW-1233, IKW-1237.
-        implementation 'com.khipu:khipu-client-android:2.28.3'
+        implementation 'com.khipu:khipu-client-android:2.28.4'
         testImplementation("org.jetbrains.kotlin:kotlin-test")
         testImplementation("org.mockito:mockito-core:5.0.0")
     }
