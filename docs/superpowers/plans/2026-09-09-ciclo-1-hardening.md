@@ -1624,82 +1624,120 @@ git commit -m "chore: sync the podspec version, modernise lints and pin metadata
 
 ---
 
-### Task 15: CHANGELOG y versión 1.8.1
+### Task 15: Re-fijar los dos SDK nativos en `1.7.x` y rehacer el release 1.7.2
 
-**Files:**
-- Modify: `CHANGELOG.md`
-- Modify: `pubspec.yaml`
-- Modify: `ios/flutter_khipu.podspec`
+**Rama: `fix/android-result-path`.** `git checkout fix/android-result-path` antes de empezar.
+Esta tarea NO se hace en `fix/cycle-1-main`.
 
-- [ ] **Step 1: Entrada del CHANGELOG**
+Decisión del humano tomada durante la ejecución: ambas líneas llevan los mismos pines nativos,
+y `1.7.2` sale como parche aunque arrastre un cambio de comportamiento, porque `1.8.0` ya está
+publicado y la línea de mantenimiento no tiene ningún número *minor* libre por debajo. La
+mitigación acordada es anunciarlo de forma prominente, que es lo que hace el paso 3.
 
-```markdown
-# 1.8.1
+**Files:** `android/build.gradle`, `ios/flutter_khipu.podspec`, `ios/flutter_khipu/Package.swift`,
+`README.md`, `CHANGELOG.md`
 
-Carries the 1.7.2 hardening of the Android result path onto the current line, and
-adds what 1.7.x deliberately does not get: the repository now has CI. Every push
-runs the analyzer, the Dart tests, the new Kotlin tests and a publish dry run with
-a cap on the tarball size, and builds the example for Android. iOS builds nightly,
-against both Swift Package Manager and CocoaPods.
+- [ ] **Step 1: Android 2.28.3 -> 2.28.4**
 
-The podspec had been claiming version 0.0.1 since it was first written. A test now
-compares it against the pubspec, and compares the KhipuClientIOS pin between the
-podspec and Package.swift, so the two iOS packaging paths cannot drift apart.
+Reemplazar la versión y las dos últimas líneas de su comentario:
 
-The Android build drops its AGP 7.3.0 buildscript block, which contradicted the AGP 9
-support 1.8.0 was about, and moves to Java 11.
-
-See the 1.7.2 entry for the behavioural changes. Nothing in the plugin's API changes.
+```groovy
+        // ... (dejar intacto el párrafo de USER_DISCONNECTED y el forValue) ...
+        // 2.28.0 subió protocol a 1.0.60; 2.28.1 agregó el guard que atrapa Throwable
+        // antes del EventThread; 2.28.2 hizo que asJson() serialice los nulos; 2.28.3
+        // sumó OPERATION_WARNING a los tipos terminales; y 2.28.4 hace que el guard
+        // llame a returnToApp(), así que un mensaje terminal ilegible por fin devuelve
+        // resultado al comercio en vez de dejarlo sin callback.
+        // Ver IKW-1232, IKW-1233, IKW-1237.
+        implementation 'com.khipu:khipu-client-android:2.28.4'
 ```
 
-- [ ] **Step 1b: Corregir la sección de cancelación del README**
+Verificar: `cd example/android && ./gradlew :flutter_khipu:dependencies --configuration releaseRuntimeClasspath | grep -E "khipu|khenshin"`.
+Esperado `khipu-client-android:2.28.4` y `protocol:1.0.60`; `khenshin-java-securemessage` sigue en `4.0.0.32`.
 
-Medido en dispositivo el 2026-09-11 con la operación de demo `8x4pwudomtf9`, contra el
-build de esta rama (SDK Android 2.28.3, confirmado por la propia UI de Khipu que imprime
-`v2.28.3`): el back abre el diálogo de abandono y, al confirmar, Dart recibe
+- [ ] **Step 2: iOS 2.16.6 -> 2.17.1, en los dos archivos**
 
-    result        ERROR
-    failureReason USER_CANCELED
-    exitTitle     Pago no realizado
-    exitMessage   Has decidido cancelar el pago
+`ios/flutter_khipu.podspec`: `s.dependency 'KhipuClientIOS', '2.17.1'`
+`ios/flutter_khipu/Package.swift`: `.package(url: ..., exact: "2.17.1")`
 
-O sea `exitTitle` y `exitMessage` **traen texto real y localizado**, no vacíos. El README
-afirma lo contrario para las tres vías, generalizando desde la única que se podía leer en
-bytecode (la restauración tardía, que sí los deja vacíos). Reemplazar el párrafo de
-`## Cancellation` por:
+`grep -n "KhipuClientIOS" ios/flutter_khipu.podspec ios/flutter_khipu/Package.swift` — ambas deben decir `2.17.1`.
+
+- [ ] **Step 3: Reescribir la entrada `# 1.7.2`**
+
+El primer párrafo existe para que nadie se lleve una sorpresa: es un parche que cambia
+comportamiento, y eso va antes que nada.
+
+```markdown
+# 1.7.2
+
+**Read this before upgrading: the payment behaves differently on iOS.** Until now, a payer who
+declined the location permission ended the operation there. From this release the payment
+continues instead, which is what Android has always done. If you relied on the old behaviour,
+this changes what your users experience. It is a patch release only because the 1.7.x line has
+no minor number available below the already-published 1.8.0.
+
+Both native clients move forward. On Android, the pinned Khenshin protocol library was missing
+a `FailureReasonType` constant the iOS library already had, and an unknown value there does not
+degrade — the generated parser throws, and that throw escaped uncaught onto the socket's event
+thread and took the host app's process with it. The Khipu client now guards every socket
+listener, treats all four terminal message types as terminal, and returns a result to the
+merchant even when it cannot parse the message that ended the operation. On iOS, besides the
+location change above, a failure inside CoreLocation used to leave the payment spinning with no
+error and no way out; it now reports null coordinates and carries on. The iOS client also fixes
+a force-cast of a socket frame and a force-unwrap of an optional decryption result, neither of
+which the surrounding `do`/`catch` could contain because a Swift trap is not an `Error`, and
+pins Starscream so the CocoaPods and Swift Package Manager graphs cannot drift apart.
+
+The plugin-side hardening is separate and had no known trigger — the SDK's exits all carry a
+result, including the back button, which opens Khipu's own abort dialog — but each path left the
+Dart `Future` unresolved if it ever fired, and a payment that never answers is the worst thing
+this plugin can do quietly.
+
+The plugin now validates before it stores the pending result, answers from the payload rather
+than the result code, treats a missing or malformed payload as an explicit `NO_RESULT` instead of
+throwing inside the listener, and removes its activity result listener on detach instead of
+accumulating one per screen rotation. A configuration change still leaves an operation in flight
+untouched; only a permanent detach ends it.
+
+New `PlatformException` codes: `NO_ACTIVITY`, `OPERATION_IN_PROGRESS`, `INVALID_OPTIONS`,
+`LAUNCH_FAILED`, `NO_RESULT`, `ACTIVITY_DETACHED`. All of them, and the ones that already existed,
+are now documented in the README — including which exist on only one platform.
+
+On iOS, a second `startOperation` while Khipu is on screen is rejected with
+`OPERATION_IN_PROGRESS` instead of presenting Khipu on top of Khipu.
+
+The README also documents, for the first time, that Khipu's Android client declares location
+permissions that the manifest merger adds to your app, when that flow actually fires, and what you
+have to declare because of it.
+
+Nothing changes in the plugin's Dart API.
+```
+
+- [ ] **Step 4: Corregir la sección de cancelación del README**
+
+Medido en dispositivo el 2026-09-11 con la operación de demo `8x4pwudomtf9`: el back abre el
+diálogo de abandono y al confirmar Dart recibe `exitTitle = "Pago no realizado"` y
+`exitMessage = "Has decidido cancelar el pago"` — texto real, no vacíos. El README afirma lo
+contrario para las tres vías, generalizando desde la única legible en bytecode. Reemplazar el
+párrafo de `## Cancellation` por:
 
 ```markdown
 ## Cancellation
 
-There is no separate "cancelled" outcome. When the payer abandons the payment — by
-backing out, which opens Khipu's own confirmation dialog, or by using its close button —
-the result arrives as a normal `KhipuResult` with `result` set to `"ERROR"` and
-`failureReason` set to `"USER_CANCELED"`. `exitTitle` and `exitMessage` carry Khipu's own
-localized wording for the abandonment, so you can show them as-is.
+There is no separate "cancelled" outcome. When the payer abandons the payment — by backing out,
+which opens Khipu's own confirmation dialog, or by using its close button — the result arrives as
+a normal `KhipuResult` with `result` set to `"ERROR"` and `failureReason` set to
+`"USER_CANCELED"`. `exitTitle` and `exitMessage` carry Khipu's own localized wording for the
+abandonment, so you can show them as-is.
 
-One uncommon path behaves differently: if Android tore the payment down and the payer
-returns more than three minutes later, the SDK ends the operation with the same `result`
-and `failureReason` but with the exit strings empty. Treat them as optional.
+Two uncommon paths differ. If Android tore the payment down and the payer returns more than three
+minutes later, the SDK ends the operation with the same `result` and `failureReason` but with the
+exit strings empty. And if the SDK cannot parse the message that ended the operation, it returns
+`result: "ERROR"` with `failureReason` **null** — it does not know why the payment failed, and
+says so rather than guessing. Treat both fields as optional.
 ```
 
-- [ ] **Step 2: Subir versiones**
-
-`pubspec.yaml`: `1.8.0` → `1.8.1`. El podspec ya quedó en `1.8.0` en la Task 14 y sube a
-`1.8.1` acá, junto con el pubspec, para que el invariante del test de sincronía sea cierto
-en cada commit.
-
-Después de subir la versión, regenerá el lock del example y **inclúilo en el commit**:
-
-```bash
-cd example && flutter pub get && cd ..
-grep -A6 "^  flutter_khipu:" example/pubspec.lock | grep version
-```
-
-`example/pubspec.lock` está versionado y registra la versión resuelta del plugin. Si no se
-regenera, queda afirmando la versión anterior y ensucia el árbol del próximo `pub get`.
-Esto se pasó por alto en el release de 1.7.2 y hubo que enmendar el commit.
-
-- [ ] **Step 3: Gate completo del spec §8**
+- [ ] **Step 5: Verificar**
 
 ```bash
 flutter analyze && flutter test
@@ -1709,16 +1747,118 @@ cd example && flutter build ios --no-codesign --debug && cd ..
 dart pub publish --dry-run
 ```
 
-- [ ] **Step 4: Commit y PR**
+Esperado: analyze limpio, 28 Dart (el test de metadata es de `main`, no existe acá), 22 Kotlin,
+APK e iOS construidos, dry-run con 0 warnings. El build de iOS resuelve SPM contra una versión
+nueva y tarda ~20 min; dejalo terminar.
+
+**Confirmá la versión RESUELTA, no la declarada** — un build verde no prueba que SPM se movió:
 
 ```bash
-git add CHANGELOG.md pubspec.yaml
-git commit -m "chore: release 1.8.1"
-git push
-gh pr create --base main --title "Cycle 1: hardening, CI and documentation" --body "Implements docs/superpowers/specs/2026-09-09-hardening-flutter-khipu-design.md"
+git -C example/build/ios/SourcePackages/checkouts/KhipuClientIOS describe --tags
 ```
 
-**PARAR ACÁ.** Quedan pendientes, para una persona: el merge de los dos PRs, `dart pub publish` en cada rama, la prueba manual en dispositivo de las tres vías de cancelación (spec §8 ítems 4 y 7), y el ticket upstream de spec §6.
+Debe decir `2.17.1`. Si dice otra cosa, reportá BLOCKED.
+
+Revertí `example/android/gradle.properties` si el build lo ensució.
+
+- [ ] **Step 6: Enmendar el commit de release**
+
+```bash
+git add android/build.gradle ios/flutter_khipu.podspec ios/flutter_khipu/Package.swift README.md CHANGELOG.md
+git commit --amend --no-edit
+```
+
+`pubspec.yaml` ya dice `1.7.2` y no cambia; `example/pubspec.lock` tampoco, porque la versión del
+plugin no se movió.
+
+---
+
+### Task 16: Merge a `main` y release 1.9.0
+
+**Rama: `fix/cycle-1-main`.** `git checkout fix/cycle-1-main` antes de empezar.
+
+`1.9.0` y no `1.8.1`: el cambio de comportamiento de iOS es un *minor* según semver, y en `main`
+sí hay número disponible.
+
+**Files:** `CHANGELOG.md`, `pubspec.yaml`, `ios/flutter_khipu.podspec`, `example/pubspec.lock`
+
+- [ ] **Step 1: Traer la Task 15 por merge**
+
+```bash
+git checkout fix/cycle-1-main
+git merge fix/android-result-path
+```
+
+Conflictos esperados: `CHANGELOG.md` (conservar ambas entradas, `# 1.8.0` arriba y `# 1.7.2`
+debajo) y `pubspec.yaml` (conservar el `1.8.0` de main y sus constraints). `android/build.gradle`,
+`README.md` y los dos archivos de iOS deberían venir limpios del lado de la rama. Si conflictúa
+algo fuera de esa lista, parar y reportar BLOCKED.
+
+- [ ] **Step 2: Subir versiones a 1.9.0**
+
+`pubspec.yaml`: `1.8.0` -> `1.9.0`. `ios/flutter_khipu.podspec`: `s.version` -> `'1.9.0'`.
+Los dos juntos: el test de sincronía los compara y debe seguir verde.
+
+- [ ] **Step 3: Entrada de CHANGELOG para 1.9.0**
+
+Arriba de todo, sobre `# 1.8.0`:
+
+```markdown
+# 1.9.0
+
+Carries everything in 1.7.2 onto the current line, and adds what the maintenance line
+deliberately does not get: the repository now has continuous integration.
+
+**This is a minor release, not a patch, because the payment behaves differently on iOS.** A payer
+who declines the location permission no longer ends the operation — the payment continues,
+matching Android. See the 1.7.2 entry for the rest of what both native clients bring, including
+the Android crash that killed the host app's process.
+
+Every push now runs the analyzer, the Dart tests, the Kotlin tests and a publish dry run with a
+cap on the tarball size, and builds the example for Android. iOS builds nightly, against both
+Swift Package Manager and CocoaPods.
+
+The podspec had been claiming version 0.0.1 since it was first written. A test now compares it
+against the pubspec, and compares the KhipuClientIOS pin between the podspec and Package.swift, so
+the two iOS packaging paths cannot drift apart.
+
+The Android build drops its AGP 7.3.0 buildscript block, which contradicted the AGP 9 support
+1.8.0 was about, and moves to Java 11. The test-only Mockito dependency moves to a version that
+works under JDK 21, so the build no longer opts into Byte Buddy's experimental instrumentation.
+
+Nothing changes in the plugin's Dart API.
+```
+
+- [ ] **Step 4: Regenerar el lock del example e incluirlo**
+
+```bash
+cd example && flutter pub get && cd ..
+grep -A6 "^  flutter_khipu:" example/pubspec.lock | grep version
+```
+
+Debe decir `1.9.0`. Está versionado y registra la versión resuelta del plugin; si no se regenera
+queda afirmando la anterior y ensucia el árbol del próximo `pub get`.
+
+- [ ] **Step 5: Gate completo**
+
+```bash
+flutter analyze && flutter test
+cd example/android && ./gradlew :flutter_khipu:test && cd ../..
+cd example && flutter build apk --debug && cd ..
+dart pub publish --dry-run
+```
+
+Esperado: analyze limpio, **30** Dart (acá sí existe el test de metadata), 22 Kotlin, APK,
+dry-run con 0 warnings y el tarball muy por debajo de 5 MB.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add CHANGELOG.md pubspec.yaml ios/flutter_khipu.podspec example/pubspec.lock
+git commit -m "chore: release 1.9.0"
+```
+
+**PARAR ACÁ.** Sin push, sin PR, sin publicar. Eso lo aprueba una persona.
 
 ---
 
