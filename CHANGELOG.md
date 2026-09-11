@@ -16,44 +16,47 @@ error.
 
 # 1.7.2
 
-Fixes two ways a payment could be lost on Android without anything looking wrong, and
-hardens the plugin's own result path around them.
+**Read this before upgrading: the payment behaves differently on iOS.** Until now, a payer who
+declined the location permission ended the operation there. From this release the payment
+continues instead, which is what Android has always done. If you relied on the old behaviour,
+this changes what your users experience. It is a patch release only because the 1.7.x line has
+no minor number available below the already-published 1.8.0.
 
-Both native clients move to their current patch releases. On Android, the pinned Khenshin
-protocol library was missing a `FailureReasonType` constant the iOS library already had,
-and an unknown value there does not degrade — the generated parser throws, and that throw
-escaped uncaught onto the socket's event thread and took the host app's process with it.
-The Khipu client now also guards every socket listener, so no parse failure can escape
-that way again, and it treats all four terminal message types as terminal — an earlier
-build of the guard covered three, which left an unparseable warning ending no operation
-at all. On iOS, the client fixes a force-cast of a socket frame and a force-unwrap of an
-optional decryption result, neither of which the surrounding `do`/`catch` could contain
-because a Swift trap is not an `Error`, and pins Starscream so the CocoaPods and Swift
-Package Manager graphs cannot drift apart.
+Both native clients move forward. On Android, the pinned Khenshin protocol library was missing
+a `FailureReasonType` constant the iOS library already had, and an unknown value there does not
+degrade — the generated parser throws, and that throw escaped uncaught onto the socket's event
+thread and took the host app's process with it. The Khipu client now guards every socket
+listener, treats all four terminal message types as terminal, and returns a result to the
+merchant even when it cannot parse the message that ended the operation. On iOS, besides the
+location change above, a failure inside CoreLocation used to leave the payment spinning with no
+error and no way out; it now reports null coordinates and carries on. The iOS client also fixes
+a force-cast of a socket frame and a force-unwrap of an optional decryption result, neither of
+which the surrounding `do`/`catch` could contain because a Swift trap is not an `Error`, and
+pins Starscream so the CocoaPods and Swift Package Manager graphs cannot drift apart.
 
-The plugin-side hardening is separate and had no known trigger — the SDK's exits all carry
-a result, including the back button, which opens Khipu's own abort dialog — but each path
-left the Dart `Future` unresolved if it ever fired, and a payment that never answers is the
-worst thing this plugin can do quietly.
+The plugin-side hardening is separate and had no known trigger — the SDK's exits all carry a
+result, including the back button, which opens Khipu's own abort dialog — but each path left the
+Dart `Future` unresolved if it ever fired, and a payment that never answers is the worst thing
+this plugin can do quietly.
 
-The plugin now validates before it stores the pending result, answers from the payload
-rather than the result code, treats a missing or malformed payload as an explicit
-`NO_RESULT` instead of throwing inside the listener, and removes its activity result
-listener on detach instead of accumulating one per screen rotation. A configuration change
-still leaves an operation in flight untouched; only a permanent detach ends it.
+The plugin now validates before it stores the pending result, answers from the payload rather
+than the result code, treats a missing or malformed payload as an explicit `NO_RESULT` instead of
+throwing inside the listener, and removes its activity result listener on detach instead of
+accumulating one per screen rotation. A configuration change still leaves an operation in flight
+untouched; only a permanent detach ends it.
 
 New `PlatformException` codes: `NO_ACTIVITY`, `OPERATION_IN_PROGRESS`, `INVALID_OPTIONS`,
-`LAUNCH_FAILED`, `NO_RESULT`, `ACTIVITY_DETACHED`. All of them, and the ones that already
-existed, are now documented in the README — including which exist on only one platform.
+`LAUNCH_FAILED`, `NO_RESULT`, `ACTIVITY_DETACHED`. All of them, and the ones that already existed,
+are now documented in the README — including which exist on only one platform.
 
 On iOS, a second `startOperation` while Khipu is on screen is rejected with
 `OPERATION_IN_PROGRESS` instead of presenting Khipu on top of Khipu.
 
-The README also documents, for the first time, that Khipu's Android client declares
-location permissions that the manifest merger adds to your app, when that flow actually
-fires, and what you have to declare because of it.
+The README also documents, for the first time, that Khipu's Android client declares location
+permissions that the manifest merger adds to your app, when that flow actually fires, and what you
+have to declare because of it.
 
-Nothing changes in the plugin's API.
+Nothing changes in the plugin's Dart API.
 
 # 1.7.1
 

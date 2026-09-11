@@ -217,11 +217,17 @@ The `KhipuResult` object will contain the following fields.
 
 ## Cancellation
 
-There is no separate "cancelled" outcome. When the payer abandons the payment — by
-backing out, by using Khipu's close button, or by coming back to a payment Android
-tore down more than three minutes earlier — the result arrives as a normal
-`KhipuResult` with `result` set to `"ERROR"` and `failureReason` set to
-`"USER_CANCELED"`. `exitTitle` and `exitMessage` come back empty in that case.
+There is no separate "cancelled" outcome. When the payer abandons the payment — by backing out,
+which opens Khipu's own confirmation dialog, or by using its close button — the result arrives as
+a normal `KhipuResult` with `result` set to `"ERROR"` and `failureReason` set to
+`"USER_CANCELED"`. `exitTitle` and `exitMessage` carry Khipu's own localized wording for the
+abandonment, so you can show them as-is.
+
+Two uncommon paths differ. If Android tore the payment down and the payer returns more than three
+minutes later, the SDK ends the operation with the same `result` and `failureReason` but with the
+exit strings empty. And if the SDK cannot parse the message that ended the operation, it returns
+`result: "ERROR"` with `failureReason` **null** — it does not know why the payment failed, and
+says so rather than guessing. Treat both fields as optional.
 
 ## Errors
 
