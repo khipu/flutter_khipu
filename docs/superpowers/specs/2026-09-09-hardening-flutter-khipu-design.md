@@ -186,20 +186,37 @@ Un valor de enum desconocido ya no puede matar la app del comercio.
 
 Contrato entrante que el plugin debe tolerar, y que se verificó ya cubierto:
 
-| Mensaje que no deserializa | Comportamiento | Qué exige del plugin |
+| Mensaje que no deserializa | Comportamiento real | Qué le llega al comercio |
 |---|---|---|
-| Terminal (`OPERATION_FAILURE`, `_SUCCESS`, `_MUST_CONTINUE`) | La operación termina y el callback dispara, pero el `KhipuResult` puede venir sin detalle de la falla | Tolerar `failureReason` ausente |
-| No terminal (`FORM_REQUEST`, `TRANSLATION`, …) | Se loggea y se ignora; la operación sigue | Nada — pero ver abajo |
+| Terminal (`_FAILURE`, `_SUCCESS`, `_MUST_CONTINUE`, `_WARNING` desde 2.28.3) | El guard marca `operationFinished` y cierra el socket | **Nada.** El callback no dispara |
+| No terminal (`FORM_REQUEST`, `TRANSLATION`, …) | Se loggea y se ignora; la operación sigue | Nada |
 
-Lo primero **ya está cubierto en las tres capas**, verificado y no supuesto:
-`failureReason?.let { … }` en el mapeo de resultado de Android, `String?` en
-`lib/flutter_khipu.dart:89`, y el `?.let` equivalente en el `toMap()` de este ciclo.
+**Corrección registrada (2026-09-11).** Una versión anterior de esta sección decía que un
+terminal indescifrable "termina la operación y dispara el callback, aunque sin detalle de la
+falla". **Es falso**, y lo verifiqué sobre el AAR 2.28.3 después de que el equipo del SDK se
+corrigiera a sí mismo: en `KhipuActivityKt` hay **un solo** `Activity.setResult`, guardado por
+`returnToApp`, que disparan acciones del pagador — no el estado `operationFinished`, del que
+sólo existe el setter y ninguna lectura que lleve al retorno.
 
-Lo segundo tiene un costo que 2.28.1 no elimina: si el mensaje que falla es un
-`FORM_REQUEST`, el pagador queda esperando un formulario que no se va a renderizar. Sin
-crash, y sin salida. **Es una forma de colgar que sobrevive al arreglo**, sigue sin ser
-defendible desde el plugin, y refuerza que el frente del generador es el que cierra la
-clase completa.
+Lo que pasa de verdad, en 2.28.1 y en 2.28.3 por igual: no hay crash, pero el pagador queda
+en la pantalla anterior con el socket cerrado y **el comercio no recibe callback**. La única
+salida es el back, que abre el diálogo de cancelación y sí produce resultado
+(`result = "ERROR"`, `failureReason = "USER_CANCELED"`).
+
+**Qué significa para este plugin.** Con la guarda de concurrencia de las Tasks 3 y 7,
+`pendingResult` queda ocupado mientras eso dura, así que toda llamada nueva se rechaza con
+`OPERATION_IN_PROGRESS` — hasta que el pagador use el back, que es de todos modos su única
+acción disponible y que libera el estado por el camino normal. El bloqueo es real pero
+acotado, no permanente.
+
+Lo que 2.28.3 **sí** arregla sobre 2.28.1 es la clasificación: `OPERATION_WARNING` pasa a
+tratarse como terminal, y el socket se cierra en vez de quedar abierto esperando. Lo que **no**
+arregla ninguna de las dos es que un terminal indescifrable devuelva resultado. Ese defecto
+sigue abierto y es IKW-1240.
+
+El contrato de tolerar `failureReason` ausente igual se mantiene y **ya está cubierto en las
+tres capas**, verificado: `failureReason?.let { … }` en el mapeo de Android, `String?` en
+`lib/flutter_khipu.dart:89`, y el `?.let` del `toMap()` de este ciclo.
 
 #### 2.6.b Degradación ante valores desconocidos — latente, ambas, fuera de alcance
 
