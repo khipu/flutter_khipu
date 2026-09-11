@@ -36,8 +36,9 @@
 | `android/.../FlutterKhipuPlugin.kt` | Ciclo de vida y plomería del resultado. Nada de mapeo. | 3, 4, 5 |
 | `android/src/test/kotlin/.../KhipuOptionsMapperTest.kt` | **Nuevo.** | 2 |
 | `android/src/test/kotlin/.../FlutterKhipuPluginTest.kt` | **Nuevo.** | 3, 4, 5 |
-| `android/build.gradle` | Stubs de test, flag de Byte Buddy, pin del cliente, higiene. | 2, 3, 6, 12 |
+| `android/build.gradle` | Stubs de test, flag de Byte Buddy, pin del cliente, higiene. | 2, 3, 6, 8, 13 |
 | `ios/.../FlutterKhipuPlugin.swift` | Guard de concurrencia únicamente. | 7 |
+| `ios/flutter_khipu.podspec` + `Package.swift` | Pin de KhipuClientIOS, versión del pod. | 8, 14 |
 | `README.md` | Geolocalización, códigos de error, cancelación. | 8 |
 | `test/package_metadata_test.dart` | **Nuevo.** Sincronía de versiones entre pubspec, podspec y Package.swift. | 13 |
 
@@ -1013,7 +1014,111 @@ Khipu already on screen presented Khipu on top of Khipu."
 
 ---
 
-### Task 8: Documentación
+### Task 8: Subir los pines nativos — Android 2.28.3 e iOS 2.16.6
+
+Tarea agregada durante la ejecución, por decisión del humano. La Task 6 dejó Android en
+2.28.1, que declara **tres** tipos terminales en su guard de socket; 2.28.3 declara
+**cuatro**, agregando `OPERATION_WARNING`. Eso importa acá más que en otros puentes:
+este plugin ahora tiene guarda de concurrencia (Tasks 3 y 7), así que una operación que
+nunca termina deja `pendingResult` seteado y **toda llamada posterior se rechaza con
+`OPERATION_IN_PROGRESS`**, no sólo la afectada.
+
+**Files:**
+- Modify: `android/build.gradle`
+- Modify: `ios/flutter_khipu.podspec`
+- Modify: `ios/flutter_khipu/Package.swift`
+
+**Interfaces:** ninguna.
+
+- [ ] **Step 1: Android — subir el pin y corregir el comentario**
+
+En `android/build.gradle`, reemplazar la línea de la dependencia y las dos últimas líneas
+de su comentario:
+
+```groovy
+        // ... (dejar intacto el párrafo que explica USER_DISCONNECTED y el forValue) ...
+        // 2.28.0 subió protocol a 1.0.60, que agrega esa constante; 2.28.1 agregó un
+        // guard que atrapa Throwable antes del EventThread; 2.28.2 hizo que asJson()
+        // serialice los nulos; y 2.28.3 agrega OPERATION_WARNING a los tipos terminales
+        // del guard — sin eso, un WARNING indescifrable no termina la operación y, con
+        // la guarda de concurrencia de este plugin, deja el plugin rechazando todo.
+        // Ver IKW-1232, IKW-1233, IKW-1237.
+        implementation 'com.khipu:khipu-client-android:2.28.3'
+```
+
+- [ ] **Step 2: Verificar la resolución de Android**
+
+```bash
+cd example/android && ./gradlew :flutter_khipu:dependencies --configuration releaseRuntimeClasspath | grep -E "khipu|khenshin"
+```
+
+Esperado: `khipu-client-android:2.28.3` y `protocol:1.0.60`. `khenshin-java-securemessage` sigue en `4.0.0.32`. Si algo más se movió, parar y reportar.
+
+- [ ] **Step 3: iOS — subir los dos archivos de empaquetado, juntos**
+
+`ios/flutter_khipu.podspec`:
+
+```ruby
+  s.dependency 'KhipuClientIOS', '2.16.6'
+```
+
+`ios/flutter_khipu/Package.swift`:
+
+```swift
+        .package(url: "https://github.com/khipu/KhipuClientIOS.git", exact: "2.16.6")
+```
+
+**Los dos tienen que decir lo mismo.** Son los dos caminos de instalación del plugin (CocoaPods y SPM) y hoy nada comprueba que coincidan — el test que lo hará llega en la Task 14. Verificalo a mano:
+
+```bash
+grep -n "KhipuClientIOS" ios/flutter_khipu.podspec ios/flutter_khipu/Package.swift
+```
+
+Ambas líneas deben mostrar `2.16.6`.
+
+- [ ] **Step 4: Verificar que nada se rompió**
+
+```bash
+cd example/android && ./gradlew :flutter_khipu:test && cd ../..
+cd example && flutter build apk --debug && cd ..
+flutter analyze && flutter test
+```
+
+Esperado: 22 tests Kotlin, 28 Dart, APK construido, analyze limpio.
+
+- [ ] **Step 5: Verificar el build de iOS con el pin nuevo**
+
+```bash
+cd example && flutter build ios --no-codesign --debug
+```
+
+Esperado: `✓ Built build/ios/iphoneos/Runner.app`. **Es lento (~20 min)** porque resuelve SPM de nuevo contra la versión nueva; dejalo terminar. Si falla por resolución de dependencias, copiá el error completo y reportá BLOCKED — no intentes arreglar el grafo de SPM por tu cuenta.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add android/build.gradle ios/flutter_khipu.podspec ios/flutter_khipu/Package.swift
+git commit -m "fix: move both native clients to their current patch releases
+
+Android 2.28.1 shipped the socket guard with three terminal message types;
+2.28.3 adds the fourth, OPERATION_WARNING. Without it an unparseable warning
+never ends the operation, and because this plugin now guards against
+concurrent operations, the stuck callback makes every later call fail with
+OPERATION_IN_PROGRESS rather than just losing the one payment. 2.28.2's
+asJson() change, also included, sends exitUrl, continueUrl and failureReason
+as explicit nulls — already handled in all three layers.
+
+iOS 2.16.6 fixes a force-cast of a socket frame and a force-unwrap of an
+optional decryption result, neither reachable by the do/catch around them
+because a Swift trap is not an Error, and pins Starscream to 4.0.8 so the
+CocoaPods and SPM graphs cannot drift.
+
+See IKW-1232, IKW-1233, IKW-1237, IKW-1234, IKW-1235."
+```
+
+---
+
+### Task 9: Documentación
 
 **Files:**
 - Modify: `README.md`
@@ -1095,7 +1200,7 @@ git commit -m "docs: document location permissions, cancellation and error codes
 
 ---
 
-### Task 9: CHANGELOG y versión 1.7.2
+### Task 10: CHANGELOG y versión 1.7.2
 
 **Files:**
 - Modify: `CHANGELOG.md`
@@ -1169,7 +1274,7 @@ gh pr create --base 1.7.x --title "Harden the Android result path" --body "Imple
 
 ## Fase 2 — Rama `main`
 
-### Task 10: Mergear `1.7.x` a `main`
+### Task 11: Mergear `1.7.x` a `main`
 
 - [ ] **Step 1: Mergear, no cherry-pick**
 
@@ -1197,7 +1302,7 @@ git add -A && git commit --no-edit
 
 ---
 
-### Task 11: CI completo en `main`
+### Task 12: CI completo en `main`
 
 **Files:**
 - Modify: `.github/workflows/ci.yml`
@@ -1301,7 +1406,7 @@ Esperado: `dart` y `android` en verde; `ios` saltado (sólo corre en schedule y 
 
 ---
 
-### Task 12: Higiene del build de Android
+### Task 13: Higiene del build de Android
 
 **Files:**
 - Modify: `android/build.gradle`
@@ -1379,7 +1484,7 @@ git commit -m "build(android): drop the AGP 7.3.0 buildscript and move to Java 1
 
 ---
 
-### Task 13: Higiene del paquete y test de sincronía de versiones
+### Task 14: Higiene del paquete y test de sincronía de versiones
 
 **Files:**
 - Modify: `ios/flutter_khipu.podspec`
@@ -1500,7 +1605,7 @@ git commit -m "chore: sync the podspec version, modernise lints and pin metadata
 
 ---
 
-### Task 14: CHANGELOG y versión 1.8.1
+### Task 15: CHANGELOG y versión 1.8.1
 
 **Files:**
 - Modify: `CHANGELOG.md`
@@ -1530,7 +1635,7 @@ See the 1.7.2 entry for the behavioural changes. Nothing in the plugin's API cha
 
 - [ ] **Step 2: Subir versiones**
 
-`pubspec.yaml`: `1.8.0` → `1.8.1`. El podspec ya quedó en `1.8.1` en la Task 13.
+`pubspec.yaml`: `1.8.0` → `1.8.1`. El podspec ya quedó en `1.8.1` en la Task 14.
 
 - [ ] **Step 3: Gate completo del spec §8**
 
