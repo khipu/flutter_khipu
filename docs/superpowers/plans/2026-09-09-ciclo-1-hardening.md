@@ -1654,7 +1654,20 @@ See the 1.7.2 entry for the behavioural changes. Nothing in the plugin's API cha
 
 - [ ] **Step 2: Subir versiones**
 
-`pubspec.yaml`: `1.8.0` → `1.8.1`. El podspec ya quedó en `1.8.1` en la Task 14.
+`pubspec.yaml`: `1.8.0` → `1.8.1`. El podspec ya quedó en `1.8.0` en la Task 14 y sube a
+`1.8.1` acá, junto con el pubspec, para que el invariante del test de sincronía sea cierto
+en cada commit.
+
+Después de subir la versión, regenerá el lock del example y **inclúilo en el commit**:
+
+```bash
+cd example && flutter pub get && cd ..
+grep -A6 "^  flutter_khipu:" example/pubspec.lock | grep version
+```
+
+`example/pubspec.lock` está versionado y registra la versión resuelta del plugin. Si no se
+regenera, queda afirmando la versión anterior y ensucia el árbol del próximo `pub get`.
+Esto se pasó por alto en el release de 1.7.2 y hubo que enmendar el commit.
 
 - [ ] **Step 3: Gate completo del spec §8**
 
