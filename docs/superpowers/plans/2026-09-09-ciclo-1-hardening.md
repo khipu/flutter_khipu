@@ -1652,6 +1652,36 @@ support 1.8.0 was about, and moves to Java 11.
 See the 1.7.2 entry for the behavioural changes. Nothing in the plugin's API changes.
 ```
 
+- [ ] **Step 1b: Corregir la sección de cancelación del README**
+
+Medido en dispositivo el 2026-09-11 con la operación de demo `8x4pwudomtf9`, contra el
+build de esta rama (SDK Android 2.28.3, confirmado por la propia UI de Khipu que imprime
+`v2.28.3`): el back abre el diálogo de abandono y, al confirmar, Dart recibe
+
+    result        ERROR
+    failureReason USER_CANCELED
+    exitTitle     Pago no realizado
+    exitMessage   Has decidido cancelar el pago
+
+O sea `exitTitle` y `exitMessage` **traen texto real y localizado**, no vacíos. El README
+afirma lo contrario para las tres vías, generalizando desde la única que se podía leer en
+bytecode (la restauración tardía, que sí los deja vacíos). Reemplazar el párrafo de
+`## Cancellation` por:
+
+```markdown
+## Cancellation
+
+There is no separate "cancelled" outcome. When the payer abandons the payment — by
+backing out, which opens Khipu's own confirmation dialog, or by using its close button —
+the result arrives as a normal `KhipuResult` with `result` set to `"ERROR"` and
+`failureReason` set to `"USER_CANCELED"`. `exitTitle` and `exitMessage` carry Khipu's own
+localized wording for the abandonment, so you can show them as-is.
+
+One uncommon path behaves differently: if Android tore the payment down and the payer
+returns more than three minutes later, the SDK ends the operation with the same `result`
+and `failureReason` but with the exit strings empty. Treat them as optional.
+```
+
 - [ ] **Step 2: Subir versiones**
 
 `pubspec.yaml`: `1.8.0` → `1.8.1`. El podspec ya quedó en `1.8.0` en la Task 14 y sube a
