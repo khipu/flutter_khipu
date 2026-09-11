@@ -28,13 +28,24 @@ jobs:
         run: |
           size=$(dart pub publish --dry-run 2>&1 \
             | grep -oE 'Total compressed archive size: [0-9.]+ [KMG]B' \
-            | grep -oE '[0-9.]+ [KMG]B')
-          echo "tarball: $size"
-          case "$size" in
-            *GB) echo "::error::tarball is $size, over the 5 MB cap"; exit 1 ;;
-            *MB) n=${size% MB}; awk -v n="$n" 'BEGIN{exit !(n>5)}' \
-                 && { echo "::error::tarball is $size, over the 5 MB cap"; exit 1; } ;;
+            | grep -oE '[0-9.]+ [KMG]B') || true
+          echo "tarball: ${size:-<could not measure>}"
+          if [ -z "$size" ]; then
+            echo "::error::could not parse the tarball size from dart pub publish output"
+            exit 1
+          fi
+          n=${size%% *}
+          unit=${size##* }
+          case "$unit" in
+            KB) mb=$(awk -v n="$n" 'BEGIN{printf "%.6f", n/1024}') ;;
+            MB) mb="$n" ;;
+            GB) mb=$(awk -v n="$n" 'BEGIN{printf "%.6f", n*1024}') ;;
+            *)  echo "::error::unrecognised size unit in '$size'"; exit 1 ;;
           esac
+          if awk -v m="$mb" 'BEGIN{exit !(m>5)}'; then
+            echo "::error::tarball is $size, over the 5 MB cap"
+            exit 1
+          fi
 
   android:
     runs-on: ubuntu-latest
