@@ -1,3 +1,27 @@
+# 1.9.0
+
+Carries everything in 1.7.2 onto the current line, and adds what the maintenance line
+deliberately does not get: the repository now has continuous integration.
+
+**This is a minor release, not a patch, because the payment behaves differently on iOS.** A payer
+who declines the location permission no longer ends the operation — the payment continues,
+matching Android. See the 1.7.2 entry for the rest of what both native clients bring, including
+the Android crash that killed the host app's process.
+
+Every push now runs the analyzer, the Dart tests, the Kotlin tests and a publish dry run with a
+cap on the tarball size, and builds the example for Android. iOS builds nightly, against both
+Swift Package Manager and CocoaPods.
+
+The podspec had been claiming version 0.0.1 since it was first written. A test now compares it
+against the pubspec, and compares the KhipuClientIOS pin between the podspec and Package.swift, so
+the two iOS packaging paths cannot drift apart.
+
+The Android build drops its AGP 7.3.0 buildscript block, which contradicted the AGP 9 support
+1.8.0 was about, and moves to Java 11. The test-only Mockito dependency moves to a version that
+works under JDK 21, so the build no longer opts into Byte Buddy's experimental instrumentation.
+
+Nothing changes in the plugin's Dart API.
+
 # 1.8.0
 
 Migrates the plugin to Built-in Kotlin. It no longer applies the Kotlin Gradle Plugin (KGP)
