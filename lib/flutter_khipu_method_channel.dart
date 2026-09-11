@@ -12,32 +12,35 @@ class MethodChannelFlutterKhipu extends FlutterKhipuPlatform {
 
   @override
   Future<KhipuResult?> startOperation(
-      KhipuStartOperationOptions options) async {
-    var result = await methodChannel
-        .invokeMethod<dynamic>('startOperation', <String, dynamic>{
-      'operationId': options.operationId,
-      'title': options.title,
-      'titleImageUrl': options.titleImageUrl,
-      'locale': options.locale,
-      'skipExitPage': options.skipExitPage,
-      'skipExitSuccessPage': options.skipExitSuccessPage,
-      'showFooter': options.showFooter,
-      'showMerchantLogo': options.showMerchantLogo,
-      'showPaymentDetails': options.showPaymentDetails,
-      'theme': options.theme,
-      'lightBackground': options.colors?.lightBackground,
-      'lightOnBackground': options.colors?.lightOnBackground,
-      'lightPrimary': options.colors?.lightPrimary,
-      'lightOnPrimary': options.colors?.lightOnPrimary,
-      'lightTopBarContainer': options.colors?.lightTopBarContainer,
-      'lightOnTopBarContainer': options.colors?.lightOnTopBarContainer,
-      'darkBackground': options.colors?.darkBackground,
-      'darkOnBackground': options.colors?.darkOnBackground,
-      'darkPrimary': options.colors?.darkPrimary,
-      'darkOnPrimary': options.colors?.darkOnPrimary,
-      'darkTopBarContainer': options.colors?.darkTopBarContainer,
-      'darkOnTopBarContainer': options.colors?.darkOnTopBarContainer,
-    });
+    KhipuStartOperationOptions options,
+  ) async {
+    var result = await methodChannel.invokeMethod<Map<Object?, Object?>>(
+      'startOperation',
+      <String, dynamic>{
+        'operationId': options.operationId,
+        'title': options.title,
+        'titleImageUrl': options.titleImageUrl,
+        'locale': options.locale,
+        'skipExitPage': options.skipExitPage,
+        'skipExitSuccessPage': options.skipExitSuccessPage,
+        'showFooter': options.showFooter,
+        'showMerchantLogo': options.showMerchantLogo,
+        'showPaymentDetails': options.showPaymentDetails,
+        'theme': options.theme,
+        'lightBackground': options.colors?.lightBackground,
+        'lightOnBackground': options.colors?.lightOnBackground,
+        'lightPrimary': options.colors?.lightPrimary,
+        'lightOnPrimary': options.colors?.lightOnPrimary,
+        'lightTopBarContainer': options.colors?.lightTopBarContainer,
+        'lightOnTopBarContainer': options.colors?.lightOnTopBarContainer,
+        'darkBackground': options.colors?.darkBackground,
+        'darkOnBackground': options.colors?.darkOnBackground,
+        'darkPrimary': options.colors?.darkPrimary,
+        'darkOnPrimary': options.colors?.darkOnPrimary,
+        'darkTopBarContainer': options.colors?.darkTopBarContainer,
+        'darkOnTopBarContainer': options.colors?.darkOnTopBarContainer,
+      },
+    );
 
     return result == null ? null : KhipuResult.fromJson(result);
   }

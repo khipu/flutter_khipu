@@ -73,7 +73,7 @@ See `example/ios/Runner/Info.plist` for a working copy.
 
 #### Repository
 
-Add the Khipu repository to the `android/build.gralde` file
+Add the Khipu repository to the `android/build.gradle` file
 
 ```groovy
 allprojects {
