@@ -161,11 +161,30 @@ public class FlutterKhipuPlugin: NSObject, FlutterPlugin {
 
         optionsBuilder = optionsBuilder.colors(colorsBuilder.build())
 
+        // Load-bearing placement: this must be set *before* the `DispatchQueue.main.async`
+        // below, not inside it. Setting it here makes two rapid `startOperation` calls
+        // race-free, because the guard at the top of this method sees it synchronously on
+        // whatever thread the second call arrives on. Moving this line inside the async
+        // block would look like a harmless refactor but would reopen the race: both calls
+        // could pass the `operationInFlight` check before either reaches the block.
+        //
+        // This flag is per-plugin-instance, not a global lock. Two Flutter engines (as in
+        // add-to-app, or a `FlutterEngineGroup`) each get their own `FlutterKhipuPlugin`
+        // instance and can still present Khipu on top of Khipu.
         operationInFlight = true
         DispatchQueue.main.async {
             KhipuLauncher.launch(presenter: rootViewController,
                                  operationId: operationId,
                                  options: optionsBuilder.build()) { [weak self] khipuResult in
+                // Released only here, by the SDK's completion closure. That is safe because
+                // in KhipuClientIOS 2.17.1 every SDK-driven exit reaches this closure — the
+                // close button, every terminal message, and even a terminal message the SDK
+                // cannot parse — and the view is presented `.overFullScreen`, so there is no
+                // interactive-dismiss (swipe-to-dismiss) path around it. The residual hole is
+                // the *host app* dismissing Khipu's view controller itself, bypassing the
+                // SDK; that would leave `operationInFlight` stuck `true` and this plugin
+                // rejecting every later call with `OPERATION_IN_PROGRESS` for the life of the
+                // process.
                 self?.operationInFlight = false
                 result([
                     "operationId": khipuResult.operationId,
