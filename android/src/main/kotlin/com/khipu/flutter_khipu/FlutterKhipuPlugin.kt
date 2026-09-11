@@ -1,10 +1,10 @@
 package com.khipu.flutter_khipu
 
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
-import android.util.Log
+import android.os.Build
 import com.khipu.client.KHIPU_RESULT_EXTRA
-import com.khipu.client.KhipuColors
 import com.khipu.client.KhipuOptions
 import com.khipu.client.KhipuResult
 import com.khipu.client.getKhipuLauncherIntent
@@ -22,9 +22,22 @@ class FlutterKhipuPlugin : FlutterPlugin, MethodCallHandler, PluginRegistry.Acti
     ActivityAware {
 
     private lateinit var channel: MethodChannel
-    private var activity: Activity? = null
+    private var binding: ActivityPluginBinding? = null
+    private val activity: Activity? get() = binding?.activity
     private var pendingResult: Result? = null
-    private val KHIPU_START_OPERATION_CODE = 101010
+
+    /**
+     * Construye el intent que lanza Khipu.
+     *
+     * Es un seam inyectable, no un adorno: `getKhipuLauncherIntent` es una función
+     * de nivel superior del SDK que construye un `Intent` real, y ninguna de las
+     * dos cosas funciona en un test unitario de JVM. Sustituirlo acá es lo que
+     * hace testeable todo el camino de lanzamiento.
+     */
+    internal var intentFactory: (Context, String, KhipuOptions) -> Intent =
+        { context, operationId, options ->
+            getKhipuLauncherIntent(context = context, operationId = operationId, options = options)
+        }
 
     override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         channel = MethodChannel(flutterPluginBinding.binaryMessenger, "flutter_khipu")
@@ -39,143 +52,94 @@ class FlutterKhipuPlugin : FlutterPlugin, MethodCallHandler, PluginRegistry.Acti
         }
     }
 
-    fun startOperation(call: MethodCall, result: Result) {
-        this.pendingResult = result
+    private fun startOperation(call: MethodCall, result: Result) {
+        val activity = this.activity
+            ?: return result.error("NO_ACTIVITY", "A foreground activity is needed to start Khipu", null)
 
-        if (!call.hasArgument("operationId")) {
-            result.error("MISSING_OPERATION_ID", "OperationId is required", null)
-            return
-        }
-
-        val operationId = call.argument<String>("operationId")!!
-
-        val optionsBuilder = KhipuOptions.Builder()
-
-        call.argument<String>("title")?.let {
-            optionsBuilder.topBarTitle = it
+        if (pendingResult != null) {
+            return result.error("OPERATION_IN_PROGRESS", "A Khipu operation is already running", null)
         }
 
-        call.argument<String>("titleImageUrl")?.let {
-            optionsBuilder.topBarImageUrl = it
+        val operationId = call.argument<String>("operationId")
+            ?: return result.error("MISSING_OPERATION_ID", "OperationId is required", null)
+
+        val intent = try {
+            intentFactory(activity.baseContext, operationId, buildKhipuOptions(call))
+        } catch (e: Exception) {
+            return result.error("INVALID_OPTIONS", e.message, null)
         }
 
-        call.argument<String>("locale")?.let {
-            optionsBuilder.locale = it
+        // El callback se guarda lo más tarde posible. Todo lo que puede lanzar
+        // ya ocurrió arriba, y lo único que queda va dentro de un try que lo libera.
+        pendingResult = result
+        try {
+            activity.startActivityForResult(intent, KHIPU_START_OPERATION_CODE)
+        } catch (e: Exception) {
+            pendingResult = null
+            result.error("LAUNCH_FAILED", e.message, null)
         }
-
-        call.argument<Boolean>("skipExitPage")?.let {
-            optionsBuilder.skipExitPage = it
-        }
-
-        call.argument<Boolean>("skipExitSuccessPage")?.let {
-            optionsBuilder.skipExitSuccessPage = it
-        }
-
-        call.argument<Boolean>("showFooter")?.let {
-            optionsBuilder.showFooter = it
-        }
-
-        call.argument<Boolean>("showMerchantLogo")?.let {
-            optionsBuilder.showMerchantLogo = it
-        }
-
-        call.argument<Boolean>("showPaymentDetails")?.let {
-            optionsBuilder.showPaymentDetails = it
-        }
-
-        call.argument<String>("theme")?.let {
-            if (it == "light") {
-                optionsBuilder.theme = KhipuOptions.Theme.LIGHT
-            } else if (it == "dark") {
-                optionsBuilder.theme = KhipuOptions.Theme.DARK
-            } else if (it == "system") {
-                optionsBuilder.theme = KhipuOptions.Theme.SYSTEM
-            }
-        }
-
-        val colorsBuilder = KhipuColors.Builder()
-
-        call.argument<String>("lightPrimary")?.let {
-            colorsBuilder.lightPrimary = it
-        }
-        call.argument<String>("lightOnPrimary")?.let {
-            colorsBuilder.lightOnPrimary = it
-        }
-        call.argument<String>("lightBackground")?.let {
-            colorsBuilder.lightBackground = it
-        }
-        call.argument<String>("lightOnBackground")?.let {
-            colorsBuilder.lightOnBackground = it
-        }
-        call.argument<String>("lightTopBarContainer")?.let {
-            colorsBuilder.lightTopBarContainer = it
-        }
-        call.argument<String>("lightOnTopBarContainer")?.let {
-            colorsBuilder.lightOnTopBarContainer = it
-        }
-        call.argument<String>("darkPrimary")?.let {
-            colorsBuilder.darkPrimary = it
-        }
-        call.argument<String>("darkOnPrimary")?.let {
-            colorsBuilder.darkOnPrimary = it
-        }
-        call.argument<String>("darkBackground")?.let {
-            colorsBuilder.darkBackground = it
-        }
-        call.argument<String>("darkOnBackground")?.let {
-            colorsBuilder.darkOnBackground = it
-        }
-        call.argument<String>("darkTopBarContainer")?.let {
-            colorsBuilder.darkTopBarContainer = it
-        }
-        call.argument<String>("darkOnTopBarContainer")?.let {
-            colorsBuilder.darkOnTopBarContainer = it
-        }
-        optionsBuilder.colors = colorsBuilder.build()
-
-
-        val intent = activity?.let {
-            getKhipuLauncherIntent(
-                context = it.baseContext,
-                operationId = operationId,
-                options = optionsBuilder.build()
-            )
-
-        }
-        activity?.startActivityForResult(intent, KHIPU_START_OPERATION_CODE)
     }
 
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?): Boolean {
-        if (requestCode == KHIPU_START_OPERATION_CODE) {
-            val result = pendingResult
-            if (result == null) {
-                Log.e("FlutterKhipuPlugin", "Result callback invoked but pendingResult not initialized")
-                return false
-            }
-            if (data != null) {
-                val khipuResult = data.getSerializableExtra(KHIPU_RESULT_EXTRA) as KhipuResult
+    /**
+     * Responde la operación en vuelo exactamente una vez y limpia el estado.
+     *
+     * Devuelve false si no había ninguna, para que el listener no reclame un
+     * resultado que no le corresponde.
+     */
+    private fun respondOnce(block: (Result) -> Unit): Boolean {
+        val result = pendingResult ?: return false
+        pendingResult = null
+        block(result)
+        return true
+    }
 
-                val resultMap = HashMap<String, Any>()
-                resultMap["operationId"] = khipuResult.operationId
-                resultMap["result"] = khipuResult.result
-                resultMap["exitTitle"] = khipuResult.exitTitle
-                resultMap["exitMessage"] = khipuResult.exitMessage
-                khipuResult.exitUrl?.let { resultMap["exitUrl"] = it }
-                khipuResult.failureReason?.let { resultMap["failureReason"] = it }
-                khipuResult.continueUrl?.let { resultMap["continueUrl"] = it }
-                resultMap["events"] = khipuResult.events.map { event ->
-                    hashMapOf(
-                        "name" to event.name,
-                        "type" to event.type,
-                        "timestamp" to event.timestamp
-                    )
-                }
-                result.success(resultMap)
-                return true
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?): Boolean {
+        if (requestCode != KHIPU_START_OPERATION_CODE) return false
+
+        // Decide el payload, nunca el resultCode: las dos salidas del SDK traen un
+        // KhipuResult completo, y RESULT_CANCELED es sólo la restauración tardía
+        // tras una muerte de proceso. Ramificar por el código haría que el mismo
+        // desenlace llegara al comercio de dos formas distintas.
+        val khipuResult = runCatching { data?.khipuResult() }.getOrNull()
+
+        return respondOnce { result ->
+            if (khipuResult == null) {
+                result.error("NO_RESULT", "Khipu returned without a result", null)
+            } else {
+                result.success(khipuResult.toMap())
             }
         }
-        return false
+    }
+
+    private fun Intent.khipuResult(): KhipuResult? =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            getSerializableExtra(KHIPU_RESULT_EXTRA, KhipuResult::class.java)
+        } else {
+            @Suppress("DEPRECATION")
+            getSerializableExtra(KHIPU_RESULT_EXTRA) as? KhipuResult
+        }
+
+    // Nota: se preserva deliberadamente el estilo de asignación indexada e infix
+    // (en vez de un builder con una función put) porque
+    // test/method_channel_seam_test.dart extrae las claves de esta función con una
+    // regex que reconoce esos dos idioms, no una llamada a función. El contrato de
+    // claves es el mismo; sólo cambia la sintaxis para seguir siendo legible por
+    // ese test.
+    private fun KhipuResult.toMap(): Map<String, Any?> {
+        val map = mutableMapOf<String, Any?>(
+            "operationId" to operationId,
+            "result" to result,
+            "exitTitle" to exitTitle,
+            "exitMessage" to exitMessage,
+            "events" to events.map { event ->
+                mapOf("name" to event.name, "type" to event.type, "timestamp" to event.timestamp)
+            }
+        )
+        exitUrl?.let { map["exitUrl"] = it }
+        failureReason?.let { map["failureReason"] = it }
+        continueUrl?.let { map["continueUrl"] = it }
+        return map
     }
 
 
@@ -184,20 +148,41 @@ class FlutterKhipuPlugin : FlutterPlugin, MethodCallHandler, PluginRegistry.Acti
     }
 
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {
-        activity = binding.activity
-        binding.addActivityResultListener(this)
-    }
-
-    override fun onDetachedFromActivityForConfigChanges() {
-        activity = null
+        attach(binding)
     }
 
     override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {
-        activity = binding.activity
-        binding.addActivityResultListener(this)
+        attach(binding)
+    }
+
+    override fun onDetachedFromActivityForConfigChanges() {
+        detach(answerPending = false)
     }
 
     override fun onDetachedFromActivity() {
-        activity = null
+        detach(answerPending = true)
+    }
+
+    private fun attach(binding: ActivityPluginBinding) {
+        detach(answerPending = false)
+        this.binding = binding
+        binding.addActivityResultListener(this)
+    }
+
+    /**
+     * Una rotación no cancela el pago: la activity de Khipu sigue arriba y el
+     * resultado llegará al reattach. Un desprendimiento definitivo sí, y dejar el
+     * callback sin responder ahí colgaría el Future para siempre.
+     */
+    private fun detach(answerPending: Boolean) {
+        binding?.removeActivityResultListener(this)
+        binding = null
+        if (answerPending) {
+            respondOnce { it.error("ACTIVITY_DETACHED", "The activity went away before Khipu returned", null) }
+        }
+    }
+
+    companion object {
+        private const val KHIPU_START_OPERATION_CODE = 101010
     }
 }

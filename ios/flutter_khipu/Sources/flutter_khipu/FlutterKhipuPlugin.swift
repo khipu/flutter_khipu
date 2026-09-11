@@ -45,7 +45,21 @@ public class FlutterKhipuPlugin: NSObject, FlutterPlugin {
         return controller
     }
 
+    /// Verdadero mientras Khipu está presentado.
+    ///
+    /// Sin esto, una segunda llamada presentaría Khipu **encima de Khipu**:
+    /// `presenter()` camina hasta el controlador presentado más alto, que en ese
+    /// momento es el propio Khipu. Dos pagos apilados sobre la misma operación.
+    private var operationInFlight = false
+
     private func startOperation(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+        if operationInFlight {
+            result(FlutterError(code: "OPERATION_IN_PROGRESS",
+                                message: "A Khipu operation is already running",
+                                details: nil))
+            return
+        }
+
         guard let rootViewController = FlutterKhipuPlugin.presenter() else {
             result(FlutterError(code: "NO_VIEW_CONTROLLER", message: "A view controller is needed to start Khipu", details: nil))
             return
@@ -147,10 +161,12 @@ public class FlutterKhipuPlugin: NSObject, FlutterPlugin {
 
         optionsBuilder = optionsBuilder.colors(colorsBuilder.build())
 
+        operationInFlight = true
         DispatchQueue.main.async {
             KhipuLauncher.launch(presenter: rootViewController,
                                  operationId: operationId,
-                                 options: optionsBuilder.build()){ khipuResult in
+                                 options: optionsBuilder.build()) { [weak self] khipuResult in
+                self?.operationInFlight = false
                 result([
                     "operationId": khipuResult.operationId,
                     "result": khipuResult.result,

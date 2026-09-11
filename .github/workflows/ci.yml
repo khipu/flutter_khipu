@@ -1,0 +1,21 @@
+name: ci
+
+on:
+  push:
+    branches: [main, 1.7.x]
+  pull_request:
+
+jobs:
+  dart:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+      - name: Publish dry run
+        run: dart pub publish --dry-run
