@@ -1133,23 +1133,33 @@ En `README.md`, dentro de `## Platform setup` → `### Android`, después de la 
 ```markdown
 #### Location permissions
 
-Khipu's Android client declares `ACCESS_FINE_LOCATION` and `ACCESS_COARSE_LOCATION`
-in its own manifest, so the manifest merger adds them to your app whether or not you
-declare them yourself. Some banks require a geolocation check before authorizing a
-transfer, and the SDK asks the payer for the permission at runtime, from a warning
-screen inside Khipu's own UI.
+Khipu's Android client declares `ACCESS_FINE_LOCATION` and `ACCESS_COARSE_LOCATION` in
+its own manifest, so the manifest merger adds them to your app whether or not you declare
+them. They are there because some banks ask to geolocate the payer during the payment.
 
-Three things follow from that, and none of them are optional:
+**Nothing happens by default.** The SDK does not ask for location when it starts. The
+geolocation screen appears only if the server sends a geolocation request for that
+particular payment, and only then does the SDK show the system permission dialog — from
+inside Khipu's own UI, in response to the payer tapping through it. If the payer declines,
+**the payment continues**: geolocation is not mandatory at this call site. With no
+permission granted, the only thing the SDK reports is whether the device has any location
+providers at all, which needs no permission and yields no location.
 
-- **Play Data Safety.** You must declare that your app collects location, even though
-  the prompt comes from Khipu and the payer can decline it.
-- **The prompt looks like yours.** The payer sees a location dialog while inside your
-  app. Tell your support team, or they will field the question cold.
-- **Ley 21.719.** Location collected during a payment is personal data. It belongs in
-  your privacy notice.
+Even so, three things follow for you, and none of them are optional:
+
+- **Play Data Safety.** You must declare that your app collects location. The permissions
+  are in your merged manifest, and the prompt can appear — that the payer may decline, or
+  may never see it, does not exempt the declaration.
+- **The prompt looks like yours.** The payer sees a location dialog while inside your app.
+  Tell your support team, or they will field the question cold.
+- **Ley 21.719.** Location collected during a payment is personal data. It belongs in your
+  privacy notice, together with the purpose above.
 
 Do **not** strip the permissions with `tools:node="remove"`. It builds, and then
-authorization fails at the banks that require the check.
+authorization fails at the banks that ask for the check.
+
+Khipu's own documentation is the canonical source for this behaviour; this section
+describes what the plugin's pinned client does today.
 ```
 
 - [ ] **Step 2: Documentar los códigos de error y la cancelación**
