@@ -5,8 +5,10 @@ deliberately does not get: the repository now has continuous integration.
 
 **This is a minor release, not a patch, because the payment behaves differently on iOS.** A payer
 who declines the location permission no longer ends the operation — the payment continues,
-matching Android. See the 1.7.2 entry for the rest of what both native clients bring, including
-the Android crash that killed the host app's process.
+matching Android. Both native clients move forward here too: Android to
+`khipu-client-android 2.28.4` and iOS to `KhipuClientIOS 2.17.1`. See the 1.7.2 entry for the
+rest of what both native clients bring, including the Android crash that killed the host app's
+process.
 
 Every push now runs the analyzer, the Dart tests, the Kotlin tests and a publish dry run with a
 cap on the tarball size, and builds the example for Android. iOS builds nightly, against both
@@ -17,8 +19,12 @@ against the pubspec, and compares the KhipuClientIOS pin between the podspec and
 the two iOS packaging paths cannot drift apart.
 
 The Android build drops its AGP 7.3.0 buildscript block, which contradicted the AGP 9 support
-1.8.0 was about, and moves to Java 11. The test-only Mockito dependency moves to a version that
-works under JDK 21, so the build no longer opts into Byte Buddy's experimental instrumentation.
+1.8.0 was about, moves to Java 11, and raises `compileSdk` from 34 to 36. That last change is
+consumer-visible: a plugin module built against `compileSdk 36` needs a sufficiently recent AGP,
+and an older AGP rejects a `compileSdk` above its own maximum unless the app sets
+`android.suppressUnsupportedCompileSdk` in its `gradle.properties`. The test-only Mockito
+dependency moves to a version that works under JDK 21, so the build no longer opts into Byte
+Buddy's experimental instrumentation.
 
 Nothing changes in the plugin's Dart API.
 
