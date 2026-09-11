@@ -6,7 +6,8 @@ continues instead, which is what Android has always done. If you relied on the o
 this changes what your users experience. It is a patch release only because the 1.7.x line has
 no minor number available below the already-published 1.8.0.
 
-Both native clients move forward. On Android, the pinned Khenshin protocol library was missing
+Both native clients move forward: Android to `khipu-client-android 2.28.4` and iOS to
+`KhipuClientIOS 2.17.1`. On Android, the pinned Khenshin protocol library was missing
 a `FailureReasonType` constant the iOS library already had, and an unknown value there does not
 degrade — the generated parser throws, and that throw escaped uncaught onto the socket's event
 thread and took the host app's process with it. The Khipu client now guards every socket
