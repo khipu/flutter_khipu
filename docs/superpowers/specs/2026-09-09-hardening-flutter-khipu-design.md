@@ -212,7 +212,15 @@ acotado, no permanente.
 Lo que 2.28.3 **sí** arregla sobre 2.28.1 es la clasificación: `OPERATION_WARNING` pasa a
 tratarse como terminal, y el socket se cierra en vez de quedar abierto esperando. Lo que **no**
 arregla ninguna de las dos es que un terminal indescifrable devuelva resultado. Ese defecto
-sigue abierto y es IKW-1240.
+es IKW-1240.
+
+**Actualización (2026-09-12).** IKW-1240 quedó cerrado, y el arreglo salió en **2.28.4**: el
+guard pasa a llamar a `returnToApp()`, así que un terminal ilegible por fin devuelve resultado
+al comercio. Este ciclo pinea 2.28.5, que lo incluye, de modo que la fila "**Nada.** El callback
+no dispara" de la tabla de arriba describe 2.28.1 y 2.28.3 — no lo que este release entrega.
+Lo que **sigue** abierto es el defecto del generador de §2.6.b, que es IKW-1232: el arreglo del
+cliente contiene el síntoma sin quitar la causa, así que cada constante nueva del protocolo
+puede reabrirlo por un camino distinto.
 
 El contrato de tolerar `failureReason` ausente igual se mantiene y **ya está cubierto en las
 tres capas**, verificado: `failureReason?.let { … }` en el mapeo de Android, `String?` en
