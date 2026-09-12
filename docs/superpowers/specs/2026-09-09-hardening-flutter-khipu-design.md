@@ -173,7 +173,7 @@ agrega el guard de §2.6.b-bis. Verificada con el mismo método antes de adoptar
 
 Entra al Ciclo 1 y a 1.7.2.
 
-Lo que sigue sin poder verificarse desde acá: si el backend ya emite `USER_DISCONNECTED`
+Lo que, al 2026-09-12, sigue sin poder verificarse desde acá: si el backend ya emite `USER_DISCONNECTED`
 dentro de un `OperationFailure`. Eso decide si esto era un incidente abierto o deuda,
 pero no cambia qué hay que hacer.
 
@@ -423,7 +423,8 @@ Dos cosas a verificar **antes** de escribirlo, o el CI nace rojo:
 
 **El ticket ya existe: IKW-1232**, único para los cuatro puentes (Flutter, React Native,
 Cordova, Capacitor). No hay que abrir otro. Su "frente 1" —el guard de §2.6.b-bis— ya salió
-en 2.28.1. Lo que sigue abierto ahí, y es el aporte de este repositorio:
+en 2.28.1. Lo que sigue abierto ahí —verificado en Jira al **2026-09-12**: IKW-1232 en
+Backlog, sin resolución, generador sin tocar—, y es el aporte de este repositorio:
 
 1. **§2.6.b, la degradación del generador.** Confirmado de forma independiente por el
    equipo del SDK Android con los comandos de este repositorio; en IKW-1232 pasó de
