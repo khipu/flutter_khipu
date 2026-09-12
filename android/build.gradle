@@ -34,13 +34,12 @@ android {
         // antes del EventThread; 2.28.2 hizo que asJson() serialice los nulos; 2.28.3
         // sumó OPERATION_WARNING a los tipos terminales; 2.28.4 hace que el guard
         // llame a returnToApp(), así que un mensaje terminal ilegible por fin devuelve
-        // resultado al comercio en vez de dejarlo sin callback.
-        // Ver IKW-1232, IKW-1233, IKW-1237.
         // resultado al comercio en vez de dejarlo sin callback; y 2.28.5 sincroniza
         // KhipuCookieJar, que guardaba cookies en un HashSet sin sincronizar mientras
         // OkHttp lo llama desde varios hilos del Dispatcher a la vez: el
         // ConcurrentModificationException salía en un hilo de fondo, sin atrapar, y
-        // mataba el proceso de la app del comercio. Ver IKW-1247.
+        // mataba el proceso de la app del comercio.
+        // Ver IKW-1232, IKW-1233, IKW-1237, IKW-1240, IKW-1247.
         implementation 'com.khipu:khipu-client-android:2.28.5'
         testImplementation("org.jetbrains.kotlin:kotlin-test")
         testImplementation("org.mockito:mockito-core:5.14.2")
