@@ -52,13 +52,17 @@ continues instead, which is what Android has always done. If you relied on the o
 this changes what your users experience. It is a patch release only because the 1.7.x line has
 no minor number available below the already-published 1.8.0.
 
-Both native clients move forward: Android to `khipu-client-android 2.28.4` and iOS to
+Both native clients move forward: Android to `khipu-client-android 2.28.5` and iOS to
 `KhipuClientIOS 2.17.1`. On Android, the pinned Khenshin protocol library was missing
 a `FailureReasonType` constant the iOS library already had, and an unknown value there does not
 degrade — the generated parser throws, and that throw escaped uncaught onto the socket's event
 thread and took the host app's process with it. The Khipu client now guards every socket
 listener, treats all four terminal message types as terminal, and returns a result to the
-merchant even when it cannot parse the message that ended the operation. On iOS, besides the
+merchant even when it cannot parse the message that ended the operation. It also synchronizes
+its cookie jar, which held cookies in an unsynchronized set while OkHttp called it from several
+dispatcher threads at once; the resulting `ConcurrentModificationException` surfaced on a
+background thread, uncaught, and killed the host app's process — leaving no callback and no
+exception behind. On iOS, besides the
 location change above, a failure inside CoreLocation used to leave the payment spinning with no
 error and no way out; it now reports null coordinates and carries on. The iOS client also fixes
 a force-cast of a socket frame and a force-unwrap of an optional decryption result, neither of
