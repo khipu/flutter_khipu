@@ -6,7 +6,7 @@ deliberately does not get: the repository now has continuous integration.
 **This is a minor release, not a patch, because the payment behaves differently on iOS.** A payer
 who declines the location permission no longer ends the operation — the payment continues,
 matching Android. Both native clients move forward here too: Android to
-`khipu-client-android 2.28.4` and iOS to `KhipuClientIOS 2.17.1`. See the 1.7.2 entry for the
+`khipu-client-android 2.28.5` and iOS to `KhipuClientIOS 2.17.1`. See the 1.7.2 entry for the
 rest of what both native clients bring, including the Android crash that killed the host app's
 process.
 
