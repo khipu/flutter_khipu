@@ -1,7 +1,10 @@
 name: flutter_khipu
 description: "Flutter plugin for Khipu, this plugin enables a flutter app to use Khipu to authorize payments."
-version: 1.8.0
+version: 1.9.0
 homepage: "https://github.com/khipu/flutter_khipu"
+repository: "https://github.com/khipu/flutter_khipu"
+issue_tracker: "https://github.com/khipu/flutter_khipu/issues"
+topics: [payments, khipu, chile, fintech]
 
 environment:
   sdk: ^3.12.0
@@ -15,7 +18,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^3.0.0
+  flutter_lints: ^6.0.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

@@ -1,3 +1,33 @@
+# 1.9.0
+
+Carries everything in 1.7.2 onto the current line, and adds what the maintenance line
+deliberately does not get: the repository now has continuous integration.
+
+**This is a minor release, not a patch, because the payment behaves differently on iOS.** A payer
+who declines the location permission no longer ends the operation — the payment continues,
+matching Android. Both native clients move forward here too: Android to
+`khipu-client-android 2.28.5` and iOS to `KhipuClientIOS 2.17.1`. See the 1.7.2 entry for the
+rest of what both native clients bring, including the Android crash that killed the host app's
+process.
+
+Every push now runs the analyzer, the Dart tests, the Kotlin tests and a publish dry run with a
+cap on the tarball size, and builds the example for Android. iOS builds nightly, against both
+Swift Package Manager and CocoaPods.
+
+The podspec had been claiming version 0.0.1 since it was first written. A test now compares it
+against the pubspec, and compares the KhipuClientIOS pin between the podspec and Package.swift, so
+the two iOS packaging paths cannot drift apart.
+
+The Android build drops its AGP 7.3.0 buildscript block, which contradicted the AGP 9 support
+1.8.0 was about, moves to Java 11, and raises `compileSdk` from 34 to 36. That last change is
+consumer-visible: a plugin module built against `compileSdk 36` needs a sufficiently recent AGP,
+and an older AGP rejects a `compileSdk` above its own maximum unless the app sets
+`android.suppressUnsupportedCompileSdk` in its `gradle.properties`. The test-only Mockito
+dependency moves to a version that works under JDK 21, so the build no longer opts into Byte
+Buddy's experimental instrumentation.
+
+Nothing changes in the plugin's Dart API.
+
 # 1.8.0
 
 Migrates the plugin to Built-in Kotlin. It no longer applies the Kotlin Gradle Plugin (KGP)
@@ -13,6 +43,55 @@ Nothing changes in the plugin's API or behaviour, and the compiled bytecode stil
 Java 8. What changes is that an app using this plugin no longer gets the warning Flutter emits
 for plugins that apply KGP, and will keep building once Flutter turns that warning into an
 error.
+
+# 1.7.2
+
+**Read this before upgrading: the payment behaves differently on iOS.** Until now, a payer who
+declined the location permission ended the operation there. From this release the payment
+continues instead, which is what Android has always done. If you relied on the old behaviour,
+this changes what your users experience. It is a patch release only because the 1.7.x line has
+no minor number available below the already-published 1.8.0.
+
+Both native clients move forward: Android to `khipu-client-android 2.28.5` and iOS to
+`KhipuClientIOS 2.17.1`. On Android, the pinned Khenshin protocol library was missing
+a `FailureReasonType` constant the iOS library already had, and an unknown value there does not
+degrade — the generated parser throws, and that throw escaped uncaught onto the socket's event
+thread and took the host app's process with it. The Khipu client now guards every socket
+listener, treats all four terminal message types as terminal, and returns a result to the
+merchant even when it cannot parse the message that ended the operation. It also synchronizes
+its cookie jar, which held cookies in an unsynchronized set while OkHttp called it from several
+dispatcher threads at once; the resulting `ConcurrentModificationException` surfaced on a
+background thread, uncaught, and killed the host app's process — leaving no callback and no
+exception behind. On iOS, besides the
+location change above, a failure inside CoreLocation used to leave the payment spinning with no
+error and no way out; it now reports null coordinates and carries on. The iOS client also fixes
+a force-cast of a socket frame and a force-unwrap of an optional decryption result, neither of
+which the surrounding `do`/`catch` could contain because a Swift trap is not an `Error`, and
+pins Starscream so the CocoaPods and Swift Package Manager graphs cannot drift apart.
+
+The plugin-side hardening is separate and had no known trigger — the SDK's exits all carry a
+result, including the back button, which opens Khipu's own abort dialog — but each path left the
+Dart `Future` unresolved if it ever fired, and a payment that never answers is the worst thing
+this plugin can do quietly.
+
+The plugin now validates before it stores the pending result, answers from the payload rather
+than the result code, treats a missing or malformed payload as an explicit `NO_RESULT` instead of
+throwing inside the listener, and removes its activity result listener on detach instead of
+accumulating one per screen rotation. A configuration change still leaves an operation in flight
+untouched; only a permanent detach ends it.
+
+New `PlatformException` codes: `NO_ACTIVITY`, `OPERATION_IN_PROGRESS`, `INVALID_OPTIONS`,
+`LAUNCH_FAILED`, `NO_RESULT`, `ACTIVITY_DETACHED`. All of them, and the ones that already existed,
+are now documented in the README — including which exist on only one platform.
+
+On iOS, a second `startOperation` while Khipu is on screen is rejected with
+`OPERATION_IN_PROGRESS` instead of presenting Khipu on top of Khipu.
+
+The README also documents, for the first time, that Khipu's Android client declares location
+permissions that the manifest merger adds to your app, when that flow actually fires, and what you
+have to declare because of it.
+
+Nothing changes in the plugin's Dart API.
 
 # 1.7.1
 

@@ -32,13 +32,19 @@ void main() {
         .toSet();
   }
 
-  /// Keys the Android plugin reads. Matched through `call.argument`/`hasArgument`
-  /// specifically, because the same file also writes the result keys and a looser
-  /// pattern would pick those up as if they were arguments.
+  /// Keys the Android plugin reads. Scans every Kotlin source in the plugin's
+  /// package rather than one fixed file: the option mapping lives in
+  /// KhipuOptionsMapper.kt, and pinning a single path made this extractor
+  /// collapse to one key the moment that file was split.
   Set<String> keysReadByAndroid() {
-    final String source = File(
-      'android/src/main/kotlin/com/khipu/flutter_khipu/FlutterKhipuPlugin.kt',
-    ).readAsStringSync();
+    final Directory dir =
+        Directory('android/src/main/kotlin/com/khipu/flutter_khipu');
+    final String source = dir
+        .listSync(recursive: true)
+        .whereType<File>()
+        .where((File f) => f.path.endsWith('.kt'))
+        .map((File f) => f.readAsStringSync())
+        .join('\n');
     return RegExp(r'(?:hasArgument|argument<[^>]*>)\("(\w+)"\)')
         .allMatches(source)
         .map((RegExpMatch m) => m.group(1)!)

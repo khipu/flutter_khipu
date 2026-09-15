@@ -4,7 +4,7 @@
 #
 Pod::Spec.new do |s|
   s.name             = 'flutter_khipu'
-  s.version          = '0.0.1'
+  s.version          = '1.9.0'
   s.summary          = 'Flutter plugin for Khipu payments.'
   s.description      = <<-DESC
 Flutter plugin for Khipu, this plugin enables a flutter app to use Khipu to authorize payments.
@@ -15,7 +15,7 @@ Flutter plugin for Khipu, this plugin enables a flutter app to use Khipu to auth
   s.source           = { :path => '.' }
   s.source_files = 'flutter_khipu/Sources/flutter_khipu/**/*.swift'
   s.dependency 'Flutter'
-  s.dependency 'KhipuClientIOS', '2.16.5'
+  s.dependency 'KhipuClientIOS', '2.17.1'
   s.platform = :ios, '13.0'
 
   # Flutter.framework does not contain a i386 slice.

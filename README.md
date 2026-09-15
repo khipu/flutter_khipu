@@ -69,11 +69,30 @@ to `ios/Runner/Info.plist`. Without it, iOS refuses to open the banking app. For
 
 See `example/ios/Runner/Info.plist` for a working copy.
 
+#### Location
+
+Khipu's iOS client may ask the payer for their location during a payment, for the same banks
+described in the "Location permissions" section under Android below.
+
+Your app must declare `NSLocationWhenInUseUsageDescription` in `ios/Runner/Info.plist` with a
+real purpose string. Without it, iOS never shows the prompt — `requestWhenInUseAuthorization()`
+has no effect and silently does nothing. An **empty** string is also rejected during App Store
+review. For example:
+
+```xml
+<key>NSLocationWhenInUseUsageDescription</key>
+<string>Usamos tu ubicación para verificar el pago con tu banco cuando este lo solicita.</string>
+```
+
+Declining the prompt does not block the payment. The three obligations that follow from this —
+Play Data Safety (or its App Store equivalent), the prompt appearing inside your app, and Ley
+21.719 — are the same ones listed below for Android; see that section rather than this one.
+
 ### Android
 
 #### Repository
 
-Add the Khipu repository to the `android/build.gralde` file
+Add the Khipu repository to the `android/build.gradle` file
 
 ```groovy
 allprojects {
@@ -135,6 +154,38 @@ Without it, the app can't detect or launch the banking app. For Chile:
 
 See `example/android/app/src/main/AndroidManifest.xml` for a working copy.
 
+#### Location permissions
+
+Khipu's Android client declares `ACCESS_FINE_LOCATION` and `ACCESS_COARSE_LOCATION` in
+its own manifest, so the manifest merger adds them to your app whether or not you declare
+them. They are there because some banks ask to geolocate the payer during the payment.
+
+**Nothing happens by default.** The SDK does not ask for location when it starts. The
+geolocation screen appears only if the server sends a geolocation request for that
+particular payment, and only then does the SDK show the system permission dialog — from
+inside Khipu's own UI, in response to the payer tapping through it. If the payer declines,
+**the payment continues**: geolocation is not mandatory at this call site. With no
+permission granted, the only thing the SDK reports is whether the device has any location
+providers at all, which needs no permission and yields no location.
+
+Even so, three things follow for you, and none of them are optional, on either platform:
+
+- **Play Data Safety / App Store privacy labels.** On Android you must declare that your
+  app collects location in Play's Data Safety section; on iOS the equivalent is your app's
+  App Store privacy label (Location under "Data Used to Track You" or "Data Linked to You",
+  as applicable). The permissions are declared, and the prompt can appear — that the payer
+  may decline, or may never see it, does not exempt the declaration.
+- **The prompt looks like yours.** The payer sees a location dialog while inside your app,
+  on either platform. Tell your support team, or they will field the question cold.
+- **Ley 21.719.** Location collected during a payment is personal data, regardless of
+  platform. It belongs in your privacy notice, together with the purpose above.
+
+Do **not** strip the permissions with `tools:node="remove"`. It builds, and then
+authorization fails at the banks that ask for the check.
+
+Khipu's own documentation is the canonical source for this behaviour; this section
+describes what the plugin's pinned client does today.
+
 ## Usage
 
 
@@ -184,4 +235,43 @@ The `KhipuResult` object will contain the following fields.
 - failureReason : String? (Optional) Describes the reason for the failure, if the operation was not successful.
 - continueUrl : String? (Optional) Available only when the result is "CONTINUE", indicating the URL to follow to continue the operation.
 - events : Array (Optional) The steps taken to generate the payment, with their timestamps.
+
+## Cancellation
+
+There is no separate "cancelled" outcome. When the payer abandons the payment — by backing out,
+which opens Khipu's own confirmation dialog, or by using its close button — the result arrives as
+a normal `KhipuResult` with `result` set to `"ERROR"` and `failureReason` set to
+`"USER_CANCELED"`. `exitTitle` and `exitMessage` carry Khipu's own localized wording for the
+abandonment, so you can show them as-is.
+
+Two uncommon paths differ. If Android tore the payment down and the payer returns more than three
+minutes later, the SDK ends the operation with the same `result` and `failureReason` but with the
+exit strings empty. And if the SDK cannot parse the message that ended the operation, it returns
+`result: "ERROR"` with `failureReason` **null** — it does not know why the payment failed, and
+says so rather than guessing. Treat both fields as optional.
+
+## Errors
+
+`startOperation` throws a `PlatformException` when it cannot start or finish. Not
+every code exists on both platforms — the causes are platform-specific.
+
+| Code | Android | iOS | Cause |
+|---|:-:|:-:|---|
+| `MISSING_OPERATION_ID` | ✓ | ✓ | No `operationId` was given |
+| `OPERATION_IN_PROGRESS` | ✓ | ✓ | A Khipu operation is already running |
+| `NO_ACTIVITY` | ✓ | | The plugin is attached to the engine but not to an activity |
+| `NO_VIEW_CONTROLLER` | | ✓ | No view controller was available to present from |
+| `BAD_ARGUMENT_DICTIONARY` | | ✓ | The arguments were not a dictionary |
+| `INVALID_OPTIONS` | ✓ | | The options could not be mapped — check your colour strings |
+| `LAUNCH_FAILED` | ✓ | | Khipu's activity could not be started |
+| `NO_RESULT` | ✓ | | Khipu returned without a result |
+| `ACTIVITY_DETACHED` | ✓ | | The activity went away before Khipu returned |
+
+`NO_RESULT` and `ACTIVITY_DETACHED` can both fire on a payment that actually succeeded. The
+plugin answers with one of them because leaving the `Future` unresolved would be worse, not
+because it knows the payment failed — **the outcome is unknown** at that point, and it may
+have completed server-side. Before treating either as a failure, confirm the operation's real
+status against the operation id through Khipu's API. Under-crediting a payer who paid is the
+expensive direction of this error: refunding a mistaken charge is routine, but a merchant who
+silently wrote off a successful payment usually never finds out.
 

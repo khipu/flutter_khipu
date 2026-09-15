@@ -1,0 +1,95 @@
+name: ci
+
+on:
+  push:
+    branches: [main, 1.7.x]
+  pull_request:
+  schedule:
+    - cron: '0 6 * * *'
+
+jobs:
+  dart:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.9'
+          channel: stable
+      - run: flutter pub get
+      - run: flutter pub get
+        working-directory: example
+      - run: flutter analyze
+      - run: flutter test
+      - name: Publish dry run
+        run: dart pub publish --dry-run
+      - name: Tarball stays small
+        # 1.7.0 shipped 87 MB of Dart compiler caches because a .pubignore
+        # stopped the root .gitignore's build/ pattern from applying. It is
+        # 98 KB today; 5 MB is room to grow and still catches that class of bug.
+        run: |
+          size=$(dart pub publish --dry-run 2>&1 \
+            | grep -oE 'Total compressed archive size: [0-9.]+ [KMG]B' \
+            | grep -oE '[0-9.]+ [KMG]B') || true
+          echo "tarball: ${size:-<could not measure>}"
+          if [ -z "$size" ]; then
+            echo "::error::could not parse the tarball size from dart pub publish output"
+            exit 1
+          fi
+          n=${size%% *}
+          unit=${size##* }
+          case "$unit" in
+            KB) mb=$(awk -v n="$n" 'BEGIN{printf "%.6f", n/1024}') ;;
+            MB) mb="$n" ;;
+            GB) mb=$(awk -v n="$n" 'BEGIN{printf "%.6f", n*1024}') ;;
+            *)  echo "::error::unrecognised size unit in '$size'"; exit 1 ;;
+          esac
+          if awk -v m="$mb" 'BEGIN{exit !(m>5)}'; then
+            echo "::error::tarball is $size, over the 5 MB cap"
+            exit 1
+          fi
+
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.9'
+          channel: stable
+      - run: flutter pub get
+        working-directory: example
+      - run: flutter build apk --debug
+        working-directory: example
+      - name: Kotlin unit tests
+        run: ./gradlew :flutter_khipu:test
+        working-directory: example/android
+
+  ios:
+    if: github.event_name == 'schedule' || startsWith(github.ref, 'refs/tags/')
+    runs-on: macos-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.9'
+          channel: stable
+      - run: flutter pub get
+        working-directory: example
+      - name: Build with Swift Package Manager
+        run: |
+          flutter config --enable-swift-package-manager
+          flutter build ios --no-codesign --debug
+        working-directory: example
+      - name: Build with CocoaPods
+        run: |
+          flutter config --no-enable-swift-package-manager
+          flutter clean && flutter build ios --no-codesign --debug
+        working-directory: example

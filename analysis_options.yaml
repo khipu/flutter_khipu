@@ -1,4 +1,10 @@
 include: package:flutter_lints/flutter.yaml
 
+analyzer:
+  language:
+    strict-casts: true
+
+# `public_member_api_docs` se activa en el Ciclo 2, junto con los doc comments.
+
 # Additional information about this file can be found at
 # https://dart.dev/guides/language/analysis-options
