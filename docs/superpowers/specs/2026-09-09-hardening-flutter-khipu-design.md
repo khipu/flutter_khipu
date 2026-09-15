@@ -471,6 +471,29 @@ no cierra, se cae E y hay que replantear el ciclo.
 - `List<KhipuEvent>` en vez de `Iterable` (hoy es el `.map` perezoso de
   `flutter_khipu.dart:105`, que se re-parsea en cada iteración), `const []` en vez de
   `null`, `final` en todos los campos, constructores `const`, `==`/`hashCode`/`toString`.
+- **Codificación del vacío: las tres claves opcionales viajan SIEMPRE, con `null`.** Hoy las
+  dos plataformas discrepan y ninguna lo decidió: Android omite la clave
+  (`exitUrl?.let { map["exitUrl"] = it }`) y iOS la manda (`khipuResult.exitUrl as Any`), en
+  los dos casos desde el primer commit de cada plataforma. Son exactamente los tres campos
+  que el SDK Android declara `@Nullable` —`exitUrl`, `continueUrl`, `failureReason`—; los
+  otros cuatro son `@NotNull` y van incondicionales en ambas. O sea que **nunca hubo dos
+  contratos: hay uno con dos codificaciones del vacío**.
+
+  La dirección la fijaron los otros puentes, porque es donde se nota: en TS/JS `undefined` y
+  `null` se distinguen con `in`, `Object.keys`, `JSON.stringify` y los defaults de
+  desestructuración. Cordova y React Native ya mandaban `null`; capacitor-khipu se alineó en
+  **8.1.0 y 7.1.0** (2026-09-15), deprecando 8.0.0 y 7.0.0 que omitían. El `asJson()` del
+  propio cliente Android construye su Gson con `serializeNulls`, así que "siempre null" es
+  además la convención del SDK nativo.
+
+  **Por qué acá y no en un parche.** Para un comercio Flutter el cambio es **invisible**,
+  medido: la API pública devuelve `KhipuResult` tipado, el mapa muere en `fromJson`, y
+  `map['k']` da `null` tanto si la clave falta como si está en `null`. Un 1.9.1 arreglaría
+  algo que nadie puede observar, en un código que este ciclo reescribe entero. Pigeon rehace
+  la capa del canal y un major es donde corresponde fijar formas de contrato.
+
+  Concretamente: el esquema de Pigeon debe emitir las tres claves siempre, y el test de
+  paridad debe cubrirlo. Decidido el 2026-09-15 con la sesión de capacitor-khipu.
 
 ### 7.3 Qué se borra
 
