@@ -50,14 +50,31 @@ android {
     }
 
     dependencies {
-        implementation 'com.khipu:khipu-client-android:2.27.0'
+        // 2.27.0 arrastraba protocol 1.0.59, cuyo FailureReasonType no conoce
+        // USER_DISCONNECTED — un valor que la librería de iOS sí tiene. El enum lo
+        // deserializa un forValue generado que LANZA ante un valor desconocido, y en
+        // Android esa excepción sale sin atrapar en el EventThread de socket.io y se
+        // lleva el proceso de la app.
+        // 2.28.0 subió protocol a 1.0.60; 2.28.1 agregó el guard que atrapa Throwable
+        // antes del EventThread; 2.28.2 hizo que asJson() serialice los nulos; 2.28.3
+        // sumó OPERATION_WARNING a los tipos terminales; 2.28.4 hace que el guard
+        // llame a returnToApp(), así que un mensaje terminal ilegible por fin devuelve
+        // resultado al comercio en vez de dejarlo sin callback; y 2.28.5 sincroniza
+        // KhipuCookieJar, que guardaba cookies en un HashSet sin sincronizar mientras
+        // OkHttp lo llama desde varios hilos del Dispatcher a la vez: el
+        // ConcurrentModificationException salía en un hilo de fondo, sin atrapar, y
+        // mataba el proceso de la app del comercio.
+        // Ver IKW-1232, IKW-1233, IKW-1237, IKW-1240, IKW-1247.
+        implementation 'com.khipu:khipu-client-android:2.28.5'
         testImplementation("org.jetbrains.kotlin:kotlin-test")
         testImplementation("org.mockito:mockito-core:5.0.0")
     }
 
     testOptions {
+        unitTests.returnDefaultValues = true
         unitTests.all {
             useJUnitPlatform()
+            systemProperty 'net.bytebuddy.experimental', 'true'
 
             testLogging {
                events "passed", "skipped", "failed", "standardOut", "standardError"
