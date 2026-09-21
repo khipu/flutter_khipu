@@ -1669,9 +1669,18 @@ Expected: PASS.
 
 - [ ] **Step 4: Medir el aviso de FlutterFramework antes de tocarlo**
 
-**Este paso empieza por medir, no por editar, y puede terminar sin cambio.** El spec (§7.5) registra que Flutter pide `FlutterFramework` por consola en cada build y sugiere cerrarlo en este ciclo. No hay una forma que se pueda escribir de antemano: en Flutter 3.44.9, `FlutterFramework` es un Swift package que **genera la herramienta dentro del proyecto de la app** y que la app agrega por **path relativo** (`swift_package_manager.dart:365-384`). Un plugin no puede declararlo con un path fijo, porque ese path depende del proyecto que lo consuma.
+**Este paso empieza por medir, no por editar, y termina sin cambio — pero no por lo que decía la versión anterior de este plan.**
 
-Buscado en `flutter_tools` el 2026-09-21, **no hay ningún warning que nombre `FlutterFramework` dirigido a un plugin**: el aviso que vio el spike puede venir de xcodebuild o de SwiftPM, no de Flutter.
+El spec (§7.5) registra que Flutter pide `FlutterFramework` por consola en cada build. Una versión anterior de este paso afirmaba que ese warning no existía, porque un grep sobre `swift_package_manager.dart` no lo encontró. **Esa afirmación era falsa y el spec tenía razón.** El warning vive en `darwin_dependency_management.dart:482-487`, se dispara sólo al compilar el example de un plugin, nombra al plugin, y dice exactamente qué agregar:
+
+```
+    .package(name: "FlutterFramework", path: "../FlutterFramework")
+    .product(name: "FlutterFramework", package: "FlutterFramework")
+```
+
+**Y seguir ese consejo rompe el build por CocoaPods.** Medido el 2026-09-21 con un experimento controlado (agregar, medir, revertir, repetir): bajo SPM el warning se cierra y todo compila; bajo CocoaPods, Xcode resuelve el `Package.swift` del plugin igual —a través de una referencia que queda en `Runner.xcodeproj`— y ahí `../FlutterFramework` no existe, así que el build se cae.
+
+**Conclusión: no se agrega.** El plugin soporta los dos empaquetados y ninguno puede quedar roto; un warning informativo es mejor que un camino de build caído. Cerrarlo de verdad exigiría tocar esa referencia en el `.pbxproj` del example, que es otro trabajo. Queda anotado como ítem abierto para quien retome la integración con SPM.
 
 Capturá el mensaje literal antes de decidir:
 
