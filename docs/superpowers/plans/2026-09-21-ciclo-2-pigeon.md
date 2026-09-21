@@ -23,6 +23,9 @@
 - **Nunca `flutter build … | tail`**: devuelve el exit code de `tail`, y un build fallado se ve como éxito. Mismo defecto que se corrigió en el CI en `bc42eae`.
 - **Los archivos `*.g.dart`, `Messages.g.kt` y `Messages.g.swift` no se editan a mano.** Se regeneran desde el esquema.
 - **Marca Khipu** en cualquier ejemplo con colores: púrpura `#8347AD`, cian `#3CB4E5`.
+- **Todo el código y la documentación van en inglés**: comentarios, doc comments (`///`), nombres y `reason:` de los tests, README, CHANGELOG y mensajes de commit. El repo viene mezclado —los nombres de test están en inglés pero varios comentarios del Ciclo 1 quedaron en español—, y este ciclo no propaga esa deriva. Los comentarios preexistentes en español **que caigan dentro de un bloque que este ciclo reescribe** se traducen junto con el bloque: dejar medio archivo en cada idioma es peor que traducir. Lo que el ciclo no toca se deja como está; traducir el repo entero no es parte de este trabajo.
+
+  Traducir es conservar el contenido y el nivel de detalle, no resumir. Estos comentarios explican **por qué** el código es como es —qué se rompe si se mueve una línea, qué se midió, qué error confuso da si falla—, y esa carga es lo que tiene que sobrevivir.
 
 ### Valores medidos que el plan da por fijos
 
@@ -116,28 +119,29 @@ import 'package:pigeon/pigeon.dart';
     swiftOut: 'ios/flutter_khipu/Sources/flutter_khipu/Messages.g.swift',
   ),
 )
-/// Tema con el que Khipu se presenta.
+/// Theme with which Khipu presents itself.
 enum KhipuTheme { light, dark, system }
 
-/// Desenlace de la operación.
+/// Outcome of the operation.
 ///
-/// El SDK lo entrega como texto libre. Los cinco primeros casos son los que
-/// `khipu-client-android` 2.28.5 puede emitir, medidos sobre su bytecode;
-/// [unknown] existe para que un valor nuevo del servidor no rompa el canal.
-/// Sin él, un valor no reconocido haría fallar la decodificación entera del
-/// mensaje y el pago llegaría al comercio como un error de plataforma.
+/// The SDK delivers it as free text. The first five cases are the ones
+/// `khipu-client-android` 2.28.5 can emit, measured on its bytecode;
+/// [unknown] exists so that a new value from the server does not break the
+/// channel. Without it, an unrecognized value would make the entire message
+/// decoding fail and the payment would reach the merchant as a platform
+/// error.
 enum KhipuResultStatus {
   ok,
   error,
   warning,
-  /// El SDK lo emite como `CONTINUE`. Se llama distinto porque `continue` es
-  /// palabra reservada en Dart, en Kotlin y en Swift.
+  /// The SDK emits this as `CONTINUE`. It is named differently because
+  /// `continue` is a reserved word in Dart, in Kotlin, and in Swift.
   mustContinue,
   userCanceled,
   unknown,
 }
 
-/// Paleta con la que se pinta Khipu. Un color nulo deja el del SDK.
+/// Palette Khipu is painted with. A null color leaves the SDK's own.
 class KhipuColors {
   String? lightBackground;
   String? lightOnBackground;
@@ -167,16 +171,17 @@ class KhipuStartOperationOptions {
   KhipuColors? colors;
 }
 
-/// Los tres campos son no nulos: medido sobre el AAR 2.28.5, el constructor
-/// de `com.khipu.client.KhipuEvent` hace `checkNotNullParameter` en los tres.
+/// All three fields are non-null: measured on the 2.28.5 AAR, the
+/// constructor of `com.khipu.client.KhipuEvent` runs `checkNotNullParameter`
+/// on all three.
 class KhipuEvent {
   late String name;
   late String type;
   late String timestamp;
 }
 
-/// Nulabilidad según §2.3 del design doc: los tres opcionales son exactamente
-/// los que el SDK Android declara `@Nullable`.
+/// Nullability per §2.3 of the design doc: the three optionals are exactly
+/// the ones the Android SDK declares `@Nullable`.
 class KhipuResult {
   late String operationId;
   late KhipuResultStatus result;
@@ -204,22 +209,22 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// El esquema de Pigeon es la única fuente de la forma del canal, y hay dos
-/// propiedades suyas que ningún test de comportamiento puede defender.
+/// The Pigeon schema is the single source of the channel's shape, and it has
+/// two properties that no behavior test can defend.
 ///
-/// La primera es la codificación del vacío que fijó el PR #18. Pigeon
-/// serializa una lista posicional, no un mapa, así que no hay clave que
-/// omitir: el requisito se cumple por construcción en cuanto los tres campos
-/// sean nullable. Lo único que podría romperlo es que alguien los vuelva
-/// obligatorios en el esquema, y eso es lo que este test mira.
+/// The first is the empty-value encoding that PR #18 pinned down. Pigeon
+/// serializes a positional list, not a map, so there is no key to omit: the
+/// requirement holds by construction as long as the three fields are
+/// nullable. The only thing that could break it is someone making them
+/// required in the schema, and that is what this test watches.
 ///
-/// La segunda es el caso `unknown` de KhipuResultStatus. Quitarlo no rompe
-/// ninguna prueba: rompe en producción, el día que el servidor emita un valor
-/// nuevo.
+/// The second is the `unknown` case of KhipuResultStatus. Removing it does
+/// not break any test: it breaks in production, the day the server emits a
+/// new value.
 void main() {
   final String schema = File('pigeons/khipu_api.dart').readAsStringSync();
 
-  test('los tres campos opcionales de KhipuResult siguen siendo nullable', () {
+  test('the three optional fields of KhipuResult stay nullable', () {
     for (final String field in <String>[
       'exitUrl',
       'failureReason',
@@ -228,27 +233,28 @@ void main() {
       expect(
         schema,
         contains('String? $field;'),
-        reason: 'El PR #18 fijó que los tres opcionales viajan siempre. Con '
-            'Pigeon eso se cumple con que sean nullable: $field dejó de serlo.',
+        reason: 'PR #18 fixed that the three optionals always travel. With '
+            'Pigeon that holds as long as they are nullable: $field stopped '
+            'being so.',
       );
     }
   });
 
-  test('KhipuResultStatus conserva el caso unknown', () {
+  test('KhipuResultStatus keeps the unknown case', () {
     expect(schema, contains('enum KhipuResultStatus'));
     expect(
       schema,
       contains('unknown,'),
-      reason: 'Sin unknown, un valor nuevo del servidor rompe la '
-          'decodificación del mensaje entero.',
+      reason: 'Without unknown, a new value from the server breaks the '
+          'decoding of the whole message.',
     );
   });
 
-  test('los cinco valores que el SDK puede emitir están cubiertos', () {
-    // Medidos sobre el bytecode de KhipuActivityKt en khipu-client-android
+  test('the five values the SDK can emit are covered', () {
+    // Measured on the bytecode of KhipuActivityKt in khipu-client-android
     // 2.28.5: OK, ERROR, WARNING, CONTINUE, USER_CANCELED. `mustContinue`
-    // es CONTINUE renombrado, porque `continue` es reservada en los tres
-    // lenguajes que Pigeon genera.
+    // is CONTINUE renamed, because `continue` is reserved in the three
+    // languages Pigeon generates for.
     for (final String c in <String>[
       'ok,',
       'error,',
@@ -272,9 +278,9 @@ Expected: FAIL — `PathNotFoundException` sobre `pigeons/khipu_api.dart` si el 
 En `pubspec.yaml`, dentro de `dev_dependencies`, después de `flutter_lints: ^6.0.0`:
 
 ```yaml
-  # Exacto y no ^: el nombre de los casos de enum que genera y la forma del
-  # código cambian entre versiones, y 29.0.2 es con la que se midió el spike
-  # de §7.1 contra los dos empaquetados de iOS.
+  # Exact, not ^: the name of the enum cases it generates and the shape of
+  # the code change between versions, and 29.0.2 is what the §7.1 spike
+  # measured against both iOS packaging paths.
   pigeon: 29.0.2
 ```
 
@@ -309,13 +315,13 @@ En `.github/workflows/ci.yml`, en el job `dart`, entre `- run: flutter analyze` 
 
 ```yaml
       - name: Generated code is up to date
-        # Un esquema editado sin regenerar deja los tres lados hablando formas
-        # distintas, y nada más en el CI lo ve: los tests de Dart corren contra
-        # el generado viejo y pasan.
+        # A schema edited without regenerating leaves the three sides
+        # speaking different shapes, and nothing else in the CI sees it: the
+        # Dart tests run against the old generated code and pass.
         run: |
           dart run pigeon --input pigeons/khipu_api.dart
           if ! git diff --exit-code --stat; then
-            echo "::error::el código generado no coincide con pigeons/khipu_api.dart; corré 'dart run pigeon --input pigeons/khipu_api.dart' y commiteá"
+            echo "::error::generated code does not match pigeons/khipu_api.dart; run 'dart run pigeon --input pigeons/khipu_api.dart' and commit it"
             exit 1
           fi
 ```
@@ -383,11 +389,11 @@ import 'package:flutter_khipu/flutter_khipu.dart';
 
 import 'package:flutter_khipu/src/messages.g.dart' as pigeon;
 
-/// Responde el canal de Pigeon como lo haría el lado nativo.
+/// Answers the Pigeon channel the way the native side would.
 ///
-/// Pigeon nombra cada canal `dev.flutter.pigeon.<paquete>.<api>.<método>`, y
-/// codifica argumentos y respuesta con su propio codec. Interceptarlo acá es
-/// el equivalente Pigeon del `setMockMethodCallHandler` de antes.
+/// Pigeon names each channel `dev.flutter.pigeon.<package>.<api>.<method>`,
+/// and encodes arguments and response with its own codec. Intercepting it
+/// here is the Pigeon equivalent of the old `setMockMethodCallHandler`.
 void mockHost(
   Object? Function(pigeon.KhipuStartOperationOptions options) respond,
 ) {
@@ -403,7 +409,7 @@ void mockHost(
   });
 }
 
-/// Un resultado nativo completo, en los tipos generados.
+/// A complete native result, in the generated types.
 pigeon.KhipuResult nativeResult({
   pigeon.KhipuResultStatus result = pigeon.KhipuResultStatus.ok,
   String? exitUrl = 'https://khipu.com/done',
@@ -436,7 +442,7 @@ void main() {
   final FlutterKhipu khipu = FlutterKhipu();
 
   group('startOperation', () {
-    test('pasa las opciones escalares al lado nativo', () async {
+    test('passes the scalar options to the native side', () async {
       late pigeon.KhipuStartOperationOptions seen;
       mockHost((pigeon.KhipuStartOperationOptions o) {
         seen = o;
@@ -460,7 +466,7 @@ void main() {
       expect(seen.theme, pigeon.KhipuTheme.dark);
     });
 
-    test('manda la paleta anidada, no doce claves sueltas', () async {
+    test('sends the palette nested, not twelve loose keys', () async {
       late pigeon.KhipuStartOperationOptions seen;
       mockHost((pigeon.KhipuStartOperationOptions o) {
         seen = o;
@@ -483,7 +489,7 @@ void main() {
       expect(seen.colors!.lightBackground, isNull);
     });
 
-    test('deja la paleta nula cuando no se dio ninguna', () async {
+    test('leaves the palette null when none was given', () async {
       late pigeon.KhipuStartOperationOptions seen;
       mockHost((pigeon.KhipuStartOperationOptions o) {
         seen = o;
@@ -498,8 +504,8 @@ void main() {
     });
   });
 
-  group('resultado', () {
-    test('mapea un resultado completo', () async {
+  group('result', () {
+    test('maps a complete result', () async {
       mockHost((_) => nativeResult());
 
       final KhipuResult? r = await khipu.startOperation(
@@ -517,20 +523,20 @@ void main() {
       expect(r.events.single.name, 'start');
     });
 
-    test('events es una lista propia, no una vista del mensaje', () async {
+    test('events is its own list, not a view over the message', () async {
       mockHost((_) => nativeResult());
 
       final KhipuResult? r = await khipu.startOperation(
         const KhipuStartOperationOptions(operationId: 'abc123'),
       );
 
-      // Pigeon entrega un CastList, que es una vista sobre la lista que
-      // decodificó el canal y castea en cada acceso. El wrapper copia.
+      // Pigeon delivers a CastList, which is a view over the list the
+      // channel decoded and casts on every access. The wrapper copies it.
       expect(r!.events, isA<List<KhipuEvent>>());
       expect(() => r.events.add(r.events.first), throwsUnsupportedError);
     });
 
-    test('una lista de eventos vacía llega como const []', () async {
+    test('an empty events list arrives as const []', () async {
       mockHost((_) => nativeResult(events: <pigeon.KhipuEvent>[]));
 
       final KhipuResult? r = await khipu.startOperation(
@@ -540,7 +546,7 @@ void main() {
       expect(r!.events, isEmpty);
     });
 
-    test('devuelve null cuando el nativo no manda resultado', () async {
+    test('returns null when the native side sends no result', () async {
       mockHost((_) => null);
 
       final KhipuResult? r = await khipu.startOperation(
@@ -550,7 +556,7 @@ void main() {
       expect(r, isNull);
     });
 
-    test('los cinco estados del SDK cruzan el canal', () async {
+    test('the five SDK statuses cross the channel', () async {
       for (final pigeon.KhipuResultStatus s in <pigeon.KhipuResultStatus>[
         pigeon.KhipuResultStatus.ok,
         pigeon.KhipuResultStatus.error,
@@ -569,8 +575,8 @@ void main() {
     });
   });
 
-  group('valor', () {
-    test('dos resultados con los mismos campos son iguales', () {
+  group('value', () {
+    test('two results with the same fields are equal', () {
       const KhipuResult a = KhipuResult(
         operationId: 'abc123',
         result: KhipuResultStatus.ok,
@@ -590,7 +596,7 @@ void main() {
       expect(a.hashCode, b.hashCode);
     });
 
-    test('toString nombra el estado', () {
+    test('toString names the status', () {
       const KhipuResult a = KhipuResult(
         operationId: 'abc123',
         result: KhipuResultStatus.userCanceled,
@@ -619,10 +625,10 @@ import 'package:meta/meta.dart';
 
 import 'messages.g.dart' as pigeon;
 
-/// Paleta con la que se pinta Khipu.
+/// Palette Khipu is painted with.
 ///
-/// Cada color es un string hexadecimal, `'#8347AD'`. Un color nulo deja el
-/// que trae el SDK.
+/// Each color is a hex string, `'#8347AD'`. A null color leaves the one the
+/// SDK brings.
 @immutable
 class KhipuColors {
   const KhipuColors({
@@ -705,10 +711,10 @@ class KhipuColors {
       'darkPrimary: $darkPrimary)';
 }
 
-/// Lo que hay que saber para abrir un pago.
+/// What is needed to open a payment.
 ///
-/// Sólo [operationId] es obligatorio; el resto ajusta la presentación y, si
-/// se deja nulo, Khipu usa su valor por defecto.
+/// Only [operationId] is required; the rest adjusts the presentation and,
+/// if left null, Khipu uses its own default.
 @immutable
 class KhipuStartOperationOptions {
   const KhipuStartOperationOptions({
@@ -725,32 +731,32 @@ class KhipuStartOperationOptions {
     this.colors,
   });
 
-  /// Identificador de la operación, creado en el backend del comercio.
+  /// Operation identifier, created on the merchant's backend.
   final String operationId;
 
-  /// Idioma de la interfaz, `'es_CL'`.
+  /// Interface language, `'es_CL'`.
   final String? locale;
 
-  /// Título de la barra superior.
+  /// Title of the top bar.
   final String? title;
 
-  /// Imagen de la barra superior.
+  /// Image of the top bar.
   final String? titleImageUrl;
 
-  /// Salta la pantalla final, sea cual sea el desenlace.
+  /// Skips the final screen, whatever the outcome.
   final bool? skipExitPage;
 
-  /// Salta la pantalla final sólo cuando el pago salió bien.
+  /// Skips the final screen only when the payment went well.
   final bool? skipExitSuccessPage;
 
   final bool? showFooter;
   final bool? showMerchantLogo;
   final bool? showPaymentDetails;
 
-  /// Tema con el que se presenta. Nulo deja el del SDK.
+  /// Theme it presents itself with. Null leaves the SDK's own.
   final KhipuTheme? theme;
 
-  /// Paleta. Nula deja la del SDK.
+  /// Palette. Null leaves the SDK's own.
   final KhipuColors? colors;
 
   pigeon.KhipuStartOperationOptions toPigeon() =>
@@ -823,7 +829,7 @@ import 'messages.g.dart' as pigeon;
 
 export 'messages.g.dart' show KhipuResultStatus;
 
-/// Un hito del pago, tal como lo reportó el SDK.
+/// A milestone of the payment, as reported by the SDK.
 @immutable
 class KhipuEvent {
   const KhipuEvent({
@@ -832,8 +838,8 @@ class KhipuEvent {
     required this.timestamp,
   });
 
-  /// Los tres son no nulos: medido sobre `khipu-client-android` 2.28.5, el
-  /// constructor de `com.khipu.client.KhipuEvent` los verifica con
+  /// All three are non-null: measured on `khipu-client-android` 2.28.5, the
+  /// constructor of `com.khipu.client.KhipuEvent` checks them with
   /// `checkNotNullParameter`.
   final String name;
   final String type;
@@ -860,13 +866,14 @@ class KhipuEvent {
       'KhipuEvent(name: $name, type: $type, timestamp: $timestamp)';
 }
 
-/// El desenlace del pago.
+/// The outcome of the payment.
 ///
-/// Los cinco campos no nulos lo son porque el SDK los declara así en las dos
-/// plataformas (§2.3 del design doc). Los tres opcionales —[exitUrl],
-/// [failureReason] y [continueUrl]— son exactamente los que el SDK declara
-/// `@Nullable`, y viajan siempre: Pigeon serializa una lista posicional, así
-/// que un campo vacío ocupa su lugar con `null` y no hay clave que omitir.
+/// The five non-null fields are so because the SDK declares them that way
+/// on both platforms (§2.3 of the design doc). The three optionals —
+/// [exitUrl], [failureReason] and [continueUrl]— are exactly the ones the
+/// SDK declares `@Nullable`, and they always travel: Pigeon serializes a
+/// positional list, so an empty field takes its place with `null` and there
+/// is no key to omit.
 @immutable
 class KhipuResult {
   const KhipuResult({
@@ -882,24 +889,26 @@ class KhipuResult {
 
   final String operationId;
 
-  /// Qué pasó con el pago. Puede ser [KhipuResultStatus.unknown] si el
-  /// servidor emitió un valor que este plugin todavía no conoce.
+  /// What happened with the payment. Can be [KhipuResultStatus.unknown] if
+  /// the server emitted a value this plugin does not know yet.
   final KhipuResultStatus result;
 
   final String exitTitle;
   final String exitMessage;
 
-  /// Los hitos del pago, en orden. Lista propia y de largo fijo: el wrapper
-  /// copia la que entrega el canal, que es una vista con cast por acceso.
+  /// The payment's milestones, in order. Its own, fixed-length list: the
+  /// wrapper copies the one the channel delivers, which is a view that
+  /// casts on each access.
   final List<KhipuEvent> events;
 
-  /// A dónde volver cuando el pago terminó. Nula si no aplica.
+  /// Where to return to when the payment finished. Null if not applicable.
   final String? exitUrl;
 
-  /// Por qué falló. Nula si no falló.
+  /// Why it failed. Null if it did not fail.
   final String? failureReason;
 
-  /// A dónde seguir cuando el pago quedó a medias. Nula si no aplica.
+  /// Where to continue to when the payment was left halfway. Null if not
+  /// applicable.
   final String? continueUrl;
 
   factory KhipuResult.fromPigeon(pigeon.KhipuResult r) => KhipuResult(
@@ -966,7 +975,7 @@ import 'khipu_options.dart';
 import 'khipu_result.dart';
 import 'messages.g.dart' as pigeon;
 
-/// Punto de entrada del plugin.
+/// Entry point of the plugin.
 ///
 /// ```dart
 /// final KhipuResult? result = await FlutterKhipu().startOperation(
@@ -974,24 +983,25 @@ import 'messages.g.dart' as pigeon;
 /// );
 /// ```
 class FlutterKhipu {
-  /// Construye el plugin.
+  /// Builds the plugin.
   ///
-  /// [messenger] existe para los tests: pasando uno propio se puede
-  /// interceptar el canal sin tocar el binding global. En una app no hace
-  /// falta darlo.
+  /// [messenger] exists for tests: passing one of your own lets you
+  /// intercept the channel without touching the global binding. In an app
+  /// there is no need to give it.
   FlutterKhipu({BinaryMessenger? messenger})
       : _api = pigeon.KhipuHostApi(binaryMessenger: messenger);
 
   final pigeon.KhipuHostApi _api;
 
-  /// Abre Khipu y espera a que la persona termine el pago.
+  /// Opens Khipu and waits for the person to finish the payment.
   ///
-  /// Devuelve el desenlace, o `null` si el lado nativo terminó sin uno.
+  /// Returns the outcome, or `null` if the native side finished without
+  /// one.
   ///
-  /// Lanza [PlatformException] si la operación no llegó a abrirse. Los
-  /// códigos posibles están documentados en el README; dos de ellos
-  /// —`OPERATION_IN_PROGRESS` y `MISSING_OPERATION_ID`— existen en las dos
-  /// plataformas, y el resto sólo en una.
+  /// Throws [PlatformException] if the operation failed to open. The
+  /// possible codes are documented in the README; two of them —
+  /// `OPERATION_IN_PROGRESS` and `MISSING_OPERATION_ID`— exist on both
+  /// platforms, and the rest only on one.
   Future<KhipuResult?> startOperation(
     KhipuStartOperationOptions options,
   ) async {
@@ -1007,11 +1017,11 @@ class FlutterKhipu {
 Reemplazar `lib/flutter_khipu.dart` por completo:
 
 ```dart
-/// Plugin de Khipu para Flutter.
+/// Khipu plugin for Flutter.
 ///
-/// Este es el único archivo que un comercio importa. Todo lo que está bajo
-/// `lib/src/` es interno y puede cambiar sin aviso, incluido el código que
-/// genera Pigeon.
+/// This is the only file a merchant imports. Everything under `lib/src/` is
+/// internal and can change without notice, including the code Pigeon
+/// generates.
 library;
 
 export 'src/flutter_khipu.dart' show FlutterKhipu;
@@ -1105,9 +1115,9 @@ Agregar a `android/src/test/kotlin/com/khipu/flutter_khipu/FlutterKhipuPluginTes
 ```kotlin
     @Test
     fun `maps every status the SDK can emit`() {
-        // Los cinco valores medidos sobre el bytecode de KhipuActivityKt en
-        // khipu-client-android 2.28.5, más el caso que protege de un valor
-        // nuevo del servidor.
+        // The five values measured on the bytecode of KhipuActivityKt in
+        // khipu-client-android 2.28.5, plus the case that guards against a
+        // new value from the server.
         assertEquals(KhipuResultStatus.OK, FlutterKhipuPlugin.statusOf("OK"))
         assertEquals(KhipuResultStatus.ERROR, FlutterKhipuPlugin.statusOf("ERROR"))
         assertEquals(KhipuResultStatus.WARNING, FlutterKhipuPlugin.statusOf("WARNING"))
@@ -1117,8 +1127,8 @@ Agregar a `android/src/test/kotlin/com/khipu/flutter_khipu/FlutterKhipuPluginTes
 
     @Test
     fun `an unknown status degrades instead of throwing`() {
-        // Éste es el punto del caso unknown: el día que el servidor emita un
-        // valor nuevo, el pago tiene que llegar al comercio igual.
+        // This is the whole point of the unknown case: the day the server
+        // emits a new value, the payment still has to reach the merchant.
         assertEquals(KhipuResultStatus.UNKNOWN, FlutterKhipuPlugin.statusOf("SOMETHING_NEW"))
         assertEquals(KhipuResultStatus.UNKNOWN, FlutterKhipuPlugin.statusOf(""))
     }
@@ -1185,18 +1195,20 @@ Borrar `onMethodCall` entero y reemplazar `startOperation` por la firma del Host
             return callback(failure("OPERATION_IN_PROGRESS", "A Khipu operation is already running"))
         }
 
-        // MISSING_OPERATION_ID desaparece: el esquema declara operationId no
-        // nulo y el codec rechaza el mensaje antes de llegar acá, así que el
-        // guard era inalcanzable. iOS lo pierde por lo mismo (Tarea 4), y el
-        // README de la Tarea 6 baja la tabla de nueve códigos a siete.
+        // MISSING_OPERATION_ID goes away: the schema declares operationId
+        // non-null and the codec rejects the message before it gets here,
+        // so the guard was unreachable. iOS loses it for the same reason
+        // (Task 4), and the Task 6 README brings the table down from nine
+        // codes to seven.
         val intent = try {
             intentFactory(activity.baseContext, options.operationId, buildKhipuOptions(options))
         } catch (e: Exception) {
             return callback(failure("INVALID_OPTIONS", e.message))
         }
 
-        // El callback se guarda lo más tarde posible. Todo lo que puede lanzar
-        // ya ocurrió arriba, y lo único que queda va dentro de un try que lo libera.
+        // The callback is stored as late as possible. Everything that can
+        // throw already happened above, and the only thing left runs inside
+        // a try that clears it.
         pendingResult = callback
         try {
             activity.startActivityForResult(intent, KHIPU_START_OPERATION_CODE)
@@ -1223,9 +1235,9 @@ Adaptar `respondOnce` y `onActivityResult`:
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?): Boolean {
         if (requestCode != KHIPU_START_OPERATION_CODE) return false
 
-        // Decide el payload, nunca el resultCode: las dos salidas del SDK traen un
-        // KhipuResult completo, y RESULT_CANCELED es sólo la restauración tardía
-        // tras una muerte de proceso.
+        // Decide on the payload, never the resultCode: both of the SDK's
+        // exits carry a complete KhipuResult, and RESULT_CANCELED is only
+        // the late restoration after a process death.
         val khipuResult = runCatching { data?.khipuResult() }.getOrNull()
 
         return respondOnce { callback ->
@@ -1274,12 +1286,12 @@ Y ampliar el `companion object` del final de la clase con el mapeo de estado. Va
         private const val KHIPU_START_OPERATION_CODE = 101010
 
         /**
-         * Traduce el texto libre del SDK al enum del canal.
+         * Translates the SDK's free text into the channel's enum.
          *
-         * Los cinco valores son los que khipu-client-android 2.28.5 puede
-         * emitir, medidos sobre el bytecode de KhipuActivityKt. UNKNOWN es lo
-         * que hace que un valor nuevo del servidor llegue al comercio en vez
-         * de romper el mensaje entero.
+         * The five values are the ones khipu-client-android 2.28.5 can
+         * emit, measured on the bytecode of KhipuActivityKt. UNKNOWN is what
+         * makes a new value from the server reach the merchant instead of
+         * breaking the whole message.
          */
         internal fun statusOf(raw: String?): KhipuResultStatus = when (raw) {
             "OK" -> KhipuResultStatus.OK
@@ -1325,8 +1337,8 @@ Y `buildKhipuOptions`, que pasa de leer un `MethodCall` a leer el objeto tipado.
     }
 
     /**
-     * El `when` va sin `else` a propósito: agregar un tema al esquema tiene que
-     * dejar de compilar acá, no caerse en silencio en tiempo de ejecución.
+     * The `when` deliberately has no `else`: adding a theme to the schema
+     * has to fail to compile here, not fail silently at runtime.
      */
     private fun KhipuTheme.toSdk(): KhipuOptions.Theme = when (this) {
         KhipuTheme.LIGHT -> KhipuOptions.Theme.LIGHT
@@ -1431,10 +1443,11 @@ En `FlutterKhipuPlugin.swift`:
 Agregar arriba del primero:
 
 ```swift
-        // Los tipos del SDK se nombran siempre con su módulo. KhipuClientIOS
-        // exporta KhipuColors, KhipuResult y KhipuEvent como públicos, y los
-        // que genera Pigeon caen en este mismo módulo: sin calificar, Swift
-        // elige el generado y el error que da no menciona el sombreado.
+        // SDK types are always named with their module. KhipuClientIOS
+        // exports KhipuColors, KhipuResult and KhipuEvent as public, and the
+        // ones Pigeon generates land in this same module: unqualified,
+        // Swift picks the generated one and the error it gives does not
+        // mention shadowing.
 ```
 
 - [ ] **Step 3: Pasar de FlutterPlugin a KhipuHostApi**
@@ -1528,12 +1541,12 @@ El orden de los parámetros lo fija el generado; copialo de `Messages.g.swift`.
 Y el mapeo, que tiene que dar exactamente lo mismo que el `statusOf` de Kotlin:
 
 ```swift
-    /// Traduce el texto libre del SDK al enum del canal.
+    /// Translates the SDK's free text into the channel's enum.
     ///
-    /// Los cinco valores son los que emite el cliente nativo; `.unknown` es lo
-    /// que hace que un valor nuevo del servidor llegue al comercio en vez de
-    /// romper el mensaje entero. Tiene que coincidir con `statusOf` de
-    /// FlutterKhipuPlugin.kt: son el mismo contrato escrito dos veces.
+    /// The five values are the ones the native client emits; `.unknown` is
+    /// what makes a new value from the server reach the merchant instead of
+    /// breaking the whole message. It has to match `statusOf` in
+    /// FlutterKhipuPlugin.kt: they are the same contract written twice.
     private static func statusOf(_ raw: String) -> KhipuResultStatus {
         switch raw {
         case "OK": return .ok
@@ -1674,9 +1687,10 @@ En `example/ios/Podfile`, dentro del `post_install`, **después** de `flutter_ad
 
 ```ruby
     target.build_configurations.each do |config|
-      # flutter_additional_ios_build_settings reimpone 13.0 en cada pod install,
-      # así que subirlo arriba no alcanza: hay que forzarlo acá. Xcode 27 no
-      # acepta menos de 15.0. No es del plugin — una app pelada falla igual.
+      # flutter_additional_ios_build_settings puts 13.0 back on every pod
+      # install, so raising it above is not enough: it has to be forced
+      # here. Xcode 27 does not accept anything below 15.0. This is not
+      # about the plugin — a bare app fails the same way.
       config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
     end
 ```
