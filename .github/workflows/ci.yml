@@ -6,6 +6,7 @@ on:
   pull_request:
   schedule:
     - cron: '0 6 * * *'
+  workflow_dispatch:
 
 jobs:
   dart:
@@ -25,9 +26,19 @@ jobs:
         # A schema edited without regenerating leaves the three sides
         # speaking different shapes, and nothing else in CI catches it: the
         # Dart tests run against the stale generated code and pass.
+        #
+        # Scoped to the schema and its three generated files, not the whole
+        # working tree: this step runs after two `flutter pub get`, and
+        # `example/pubspec.lock` is tracked. Anything that rewrites it on the
+        # runner would otherwise trip this check and send whoever's debugging
+        # looking for a Pigeon problem that isn't there.
         run: |
           dart run pigeon --input pigeons/khipu_api.dart
-          if ! git diff --exit-code --stat; then
+          if ! git diff --exit-code --stat -- \
+            pigeons/khipu_api.dart \
+            lib/src/messages.g.dart \
+            android/src/main/kotlin/com/khipu/flutter_khipu/Messages.g.kt \
+            ios/flutter_khipu/Sources/flutter_khipu/Messages.g.swift; then
             echo "::error::generated code does not match pigeons/khipu_api.dart; run 'dart run pigeon --input pigeons/khipu_api.dart' and commit"
             exit 1
           fi
@@ -82,7 +93,7 @@ jobs:
         working-directory: example/android
 
   ios:
-    if: github.event_name == 'schedule' || startsWith(github.ref, 'refs/tags/')
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/')
     runs-on: macos-latest
     timeout-minutes: 90
     steps:

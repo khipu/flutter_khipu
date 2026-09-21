@@ -103,6 +103,10 @@ class FlutterKhipuPluginTest {
         assertIs<FlutterError>(thrown)
         assertEquals(code, thrown.code)
         assertEquals(message, thrown.message)
+        // All nine call sites build their FlutterError with a null `details`;
+        // this got lost when the `verify(result).error(code, message, null)`
+        // calls were folded into this helper.
+        assertNull(thrown.details)
     }
 
     private fun Outcome.assertNoFailure() {

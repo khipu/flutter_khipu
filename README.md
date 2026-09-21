@@ -4,14 +4,34 @@ Flutter plugin for Khipu, this plugin enables a flutter app to use Khipu to auth
 
 ## Installing the plugin
 
-Version 1.8.0 and later require **Flutter 3.44 or later** (Dart 3.12). Anything earlier than
-3.44 is served by the **1.7.x** line, which is maintained on the `1.7.x` branch and still
-receives critical fixes.
+Three lines are live at once. Which one you want depends on your Flutter version and whether
+you're ready for the 2.0 typed API described in "Migrating from 1.x" below:
 
-You do not need to pin anything for this: pub takes each version's SDK constraint into account
-when resolving, so a `flutter_khipu: ^1.7.1` dependency resolves to 1.7.1 on an older Flutter
-and to 1.8.0 on 3.44 or later. `flutter pub upgrade` will report that a newer version exists
-but is incompatible, which is expected and not an error.
+| Line | Latest | Needs | What it is |
+|---|---|---|---|
+| `1.7.x` | 1.7.2 | Flutter 3.3.0+ | Maintained on the `1.7.x` branch, critical fixes only, pre-typed API. For anything earlier than Flutter 3.44. |
+| `1.9.x` | 1.9.0 | Flutter 3.44+ | Same pre-typed API as 1.7.x, with CI and the native client updates 1.7.2/1.9.0 shipped. No breaking changes from 1.x. |
+| `2.0.x` | 2.0.0 | Flutter 3.44+ | The typed API. Recommended for new integrations. |
+
+**Pin to the line you want** rather than a single `^` constraint spanning all three:
+
+```yaml
+# 1.7.x — anything earlier than Flutter 3.44
+flutter_khipu: ">=1.7.0 <1.8.0"
+
+# 1.9.x — Flutter 3.44 or later, staying on the pre-2.0 API
+flutter_khipu: ">=1.8.0 <2.0.0"
+
+# 2.0.x — Flutter 3.44 or later, the typed API
+flutter_khipu: ^2.0.0
+```
+
+Before 2.0.0 existed, `flutter_khipu: ^1.7.1` doubled as "give me whatever's newest and
+compatible": on Flutter 3.44+ that meant 1.8.0, then 1.9.0, as each was published. It no longer
+does. `^1.7.1` means `>=1.7.1 <2.0.0`, and 2.0.0 falls outside that range by construction — pub
+resolves to 1.9.0 and stops there, with nothing beyond `flutter pub outdated` telling you a newer
+major exists. If your `pubspec.yaml` still says `^1.7.1` (or similar) on a project running Flutter
+3.44+, you are on the 1.9.x line whether you meant to be or not.
 
 Add this plugin to your dependencies
 
@@ -188,7 +208,7 @@ describes what the plugin's pinned client does today.
 
 ## Migrating from 1.x
 
-Six breaking changes. Most integrations only hit the first two.
+Eight breaking changes. Most integrations only hit the first two.
 
 ### 1. `theme` is an enum
 
@@ -219,6 +239,11 @@ spelled differently because `continue` is a reserved word.
 result this plugin does not know yet. In 1.x that value reached you as a raw
 string; treating it as a failure is usually right, but it is your call.
 
+2.0 also adds `rawResult`, a new `String` field that carries what the SDK
+actually sent — `'OK'`, `'SOMETHING_NEW'`, whatever it was — regardless of
+what `result` maps it to. It is what lets you log or report an `unknown`
+status without waiting for a plugin release that adds the new case.
+
 ### 3. Five fields are no longer nullable
 
 `operationId`, `result`, `exitTitle`, `exitMessage` and `events` are always
@@ -234,6 +259,17 @@ final String title = result!.exitTitle;
 
 `exitUrl`, `failureReason` and `continueUrl` stay nullable. They are exactly
 the three the native SDKs declare optional.
+
+**`KhipuEvent` lost nullability too.** `name`, `type` and `timestamp` go from
+`String?` to `String`, for the same reason: the native SDKs never send a
+`KhipuEvent` without them.
+
+```dart
+// 1.x
+final String name = event.name ?? '';
+// 2.0
+final String name = event.name;
+```
 
 ### 4. `events` is a `List`, never null
 
@@ -269,6 +305,27 @@ fields compare equal.
 `flutter_khipu_platform_interface.dart` and `flutter_khipu_method_channel.dart`
 no longer exist. `package:flutter_khipu/flutter_khipu.dart` is the only import,
 and it is all you needed unless you were extending the platform interface.
+
+### 7. `fromJson` is gone
+
+`KhipuResult.fromJson` and `KhipuEvent.fromJson` were public `static` factories
+in 1.x, for deserializing a result you had stored yourself. Neither type has
+one in 2.0.
+
+```dart
+// 1.x
+final KhipuResult result = KhipuResult.fromJson(storedJson);
+// 2.0
+// No replacement. If you need to persist a KhipuResult and reconstruct it
+// later, serialize the fields you need yourself.
+```
+
+### 8. Two error codes no longer exist
+
+`MISSING_OPERATION_ID` and `BAD_ARGUMENT_DICTIONARY` are gone from the
+`PlatformException` codes documented under "Errors" below. Both described a
+malformed call across the channel, and the channel can no longer deliver one
+— see that section for why.
 
 ## Usage
 
@@ -320,6 +377,8 @@ practice you always get a `KhipuResult`, whose fields are:
   - `userCanceled` : The payer abandoned the payment.
   - `unknown` : The server sent a status this version of the plugin does not know yet. Handle
     it explicitly — treating it as a failure is usually right, but it is your call.
+- `rawResult` : `String`. What the SDK actually sent for `result`, before it was matched against
+  the cases above. Always present, so you can log or report a value that maps to `unknown`.
 - `exitTitle` : `String`. Title to show the user on the exit screen, reflecting the outcome.
 - `exitMessage` : `String`. Additional detail about the outcome, to show alongside `exitTitle`.
 - `exitUrl` : `String?`. URL to return the app to at the end of the process, if any.
@@ -357,6 +416,10 @@ code, `OPERATION_IN_PROGRESS`, exists on both.
 | `LAUNCH_FAILED` | ✓ | | Khipu's activity could not be started |
 | `NO_RESULT` | ✓ | | Khipu returned without a result |
 | `ACTIVITY_DETACHED` | ✓ | | The activity went away before Khipu returned |
+
+This table is not exhaustive. The generated channel itself can throw a `PlatformException` with
+code `channel-error` if the host side never responds at all — a connection problem, rather than
+anything either platform's plugin code raised on purpose.
 
 Two codes from 1.x are gone: `MISSING_OPERATION_ID` and `BAD_ARGUMENT_DICTIONARY`. Both
 described a malformed call, and the channel can no longer deliver one — its shape is now
