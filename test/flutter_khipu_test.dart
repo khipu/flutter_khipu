@@ -65,42 +65,96 @@ void main() {
 
   group('startOperation', () {
     test('passes the scalar options to the native side', () async {
-      late pigeon.KhipuStartOperationOptions seen;
+      // Five booleans, two possible values: by the pigeonhole principle any
+      // single round has at least three fields sharing a value, so a swap
+      // between two of those three passes undetected — e.g. skipExitPage
+      // and showFooter, both true in one round. Three rounds, each field
+      // carrying its own triple across them (TFF, FTF, FFT, TTF, TFT — all
+      // distinct), close that gap: any swap between any pair of fields
+      // changes at least one round.
+      final List<Map<String, bool>> booleanRounds = <Map<String, bool>>[
+        <String, bool>{
+          'skipExitPage': true,
+          'skipExitSuccessPage': false,
+          'showFooter': false,
+          'showMerchantLogo': true,
+          'showPaymentDetails': true,
+        },
+        <String, bool>{
+          'skipExitPage': false,
+          'skipExitSuccessPage': true,
+          'showFooter': false,
+          'showMerchantLogo': true,
+          'showPaymentDetails': false,
+        },
+        <String, bool>{
+          'skipExitPage': false,
+          'skipExitSuccessPage': false,
+          'showFooter': true,
+          'showMerchantLogo': false,
+          'showPaymentDetails': true,
+        },
+      ];
+
+      for (final Map<String, bool> round in booleanRounds) {
+        late pigeon.KhipuStartOperationOptions seen;
+        mockHost((pigeon.KhipuStartOperationOptions o) {
+          seen = o;
+          return nativeResult();
+        });
+
+        await khipu.startOperation(
+          KhipuStartOperationOptions(
+            operationId: 'abc123',
+            title: 'Mi comercio',
+            titleImageUrl: 'https://example.com/logo.png',
+            locale: 'es_CL',
+            skipExitPage: round['skipExitPage'],
+            skipExitSuccessPage: round['skipExitSuccessPage'],
+            showFooter: round['showFooter'],
+            showMerchantLogo: round['showMerchantLogo'],
+            showPaymentDetails: round['showPaymentDetails'],
+            theme: KhipuTheme.dark,
+          ),
+        );
+
+        expect(seen.operationId, 'abc123');
+        expect(seen.title, 'Mi comercio');
+        expect(seen.titleImageUrl, 'https://example.com/logo.png');
+        expect(seen.locale, 'es_CL');
+        expect(seen.skipExitPage, round['skipExitPage']);
+        expect(seen.skipExitSuccessPage, round['skipExitSuccessPage']);
+        expect(seen.showFooter, round['showFooter']);
+        expect(seen.showMerchantLogo, round['showMerchantLogo']);
+        expect(seen.showPaymentDetails, round['showPaymentDetails']);
+        expect(seen.theme, pigeon.KhipuTheme.dark);
+      }
+    });
+
+    test('sends the palette nested, not twelve loose keys', () async {
+      // Partial construction: most fields stay unset and must travel as
+      // null, not silently pick up a neighbour's value.
+      late pigeon.KhipuStartOperationOptions seenPartial;
       mockHost((pigeon.KhipuStartOperationOptions o) {
-        seen = o;
+        seenPartial = o;
         return nativeResult();
       });
 
       await khipu.startOperation(
         const KhipuStartOperationOptions(
           operationId: 'abc123',
-          title: 'Mi comercio',
-          titleImageUrl: 'https://example.com/logo.png',
-          locale: 'es_CL',
-          skipExitPage: true,
-          skipExitSuccessPage: false,
-          showFooter: true,
-          showMerchantLogo: false,
-          showPaymentDetails: true,
-          theme: KhipuTheme.dark,
+          colors: KhipuColors(
+            lightPrimary: '#8347AD',
+            darkPrimary: '#3CB4E5',
+          ),
         ),
       );
 
-      expect(seen.operationId, 'abc123');
-      expect(seen.title, 'Mi comercio');
-      expect(seen.titleImageUrl, 'https://example.com/logo.png');
-      expect(seen.locale, 'es_CL');
-      // Alternating true/false so an adjacent-field swap among the five
-      // booleans changes the outcome instead of passing by coincidence.
-      expect(seen.skipExitPage, isTrue);
-      expect(seen.skipExitSuccessPage, isFalse);
-      expect(seen.showFooter, isTrue);
-      expect(seen.showMerchantLogo, isFalse);
-      expect(seen.showPaymentDetails, isTrue);
-      expect(seen.theme, pigeon.KhipuTheme.dark);
-    });
+      expect(seenPartial.colors, isNotNull);
+      expect(seenPartial.colors!.lightPrimary, '#8347AD');
+      expect(seenPartial.colors!.darkPrimary, '#3CB4E5');
+      expect(seenPartial.colors!.lightBackground, isNull);
 
-    test('sends the palette nested, not twelve loose keys', () async {
       // Each field gets its own name as its value, so a field swapped with
       // its neighbour fails with a message naming exactly which one.
       late pigeon.KhipuStartOperationOptions seen;
