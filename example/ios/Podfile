@@ -1,5 +1,5 @@
 # Uncomment this line to define a global platform for your project
-platform :ios, '13.0'
+platform :ios, '15.0'
 
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
@@ -40,5 +40,19 @@ end
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
+
+    # `flutter_additional_ios_build_settings` only *deletes*
+    # IPHONEOS_DEPLOYMENT_TARGET for pods declaring a target below 13.0 (so
+    # they inherit the project's); a pod that declares exactly 13.0 — like
+    # this plugin's own podspec, or KhipuClientIOS's transitive
+    # dependencies — keeps that literal value untouched. Raising the
+    # Podfile's `platform` line alone does not reach those pods: CocoaPods
+    # bakes each pod target's own deployment target into its build
+    # settings at `pod install` time. Xcode 27 refuses anything below
+    # 15.0, so every target's every configuration is forced here,
+    # regardless of what its podspec declared.
+    target.build_configurations.each do |config|
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
+    end
   end
 end
