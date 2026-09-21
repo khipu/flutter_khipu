@@ -130,6 +130,7 @@ public class FlutterKhipuPlugin: NSObject, FlutterPlugin, KhipuHostApi {
                     continuation.resume(returning: KhipuResult(
                         operationId: khipuResult.operationId,
                         result: Self.statusOf(khipuResult.result),
+                        rawResult: khipuResult.result,
                         exitTitle: khipuResult.exitTitle,
                         exitMessage: khipuResult.exitMessage,
                         events: khipuResult.events.map { event in
@@ -152,7 +153,12 @@ public class FlutterKhipuPlugin: NSObject, FlutterPlugin, KhipuHostApi {
     /// what makes a new value from the server reach the merchant instead of
     /// breaking the whole message. It has to match `statusOf` in
     /// FlutterKhipuPlugin.kt: they are the same contract written twice.
-    private static func statusOf(_ raw: String) -> KhipuResultStatus {
+    ///
+    /// `internal` (the default), not `private`, so RunnerTests can reach it
+    /// through `@testable import` — otherwise this mapping would be the one
+    /// half of the "same contract written twice" that has no test on this
+    /// platform.
+    static func statusOf(_ raw: String) -> KhipuResultStatus {
         switch raw {
         case "OK": return .ok
         case "ERROR": return .error

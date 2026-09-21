@@ -47,17 +47,20 @@ class KhipuEvent {
 
 /// The outcome of the payment.
 ///
-/// The five non-null fields are so because the SDK declares them that way
-/// on both platforms (§2.3 of the design doc). The three optionals —
-/// [exitUrl], [failureReason] and [continueUrl]— are exactly the ones the
-/// SDK declares `@Nullable`, and they always travel: Pigeon serializes a
-/// positional list, so an empty field takes its place with `null` and there
-/// is no key to omit.
+/// Five of the non-null fields — [operationId], [result], [exitTitle],
+/// [exitMessage] and [events] — are so because the SDK declares them that
+/// way on both platforms (§2.3 of the design doc). [rawResult] is the
+/// plugin's own addition, not the SDK's; see its doc comment. The three
+/// optionals — [exitUrl], [failureReason] and [continueUrl]— are exactly
+/// the ones the SDK declares `@Nullable`, and they always travel: Pigeon
+/// serializes a positional list, so an empty field takes its place with
+/// `null` and there is no key to omit.
 @immutable
 class KhipuResult {
   const KhipuResult({
     required this.operationId,
     required this.result,
+    required this.rawResult,
     required this.exitTitle,
     required this.exitMessage,
     required this.events,
@@ -71,6 +74,14 @@ class KhipuResult {
   /// What happened with the payment. Can be [KhipuResultStatus.unknown] if
   /// the server emitted a value this plugin does not know yet.
   final KhipuResultStatus result;
+
+  /// What the SDK actually sent for [result], before it was matched against
+  /// the known cases — `'OK'`, `'ERROR'`, `'CONTINUE'`, and so on. Always
+  /// present, even when [result] is not [KhipuResultStatus.unknown]. Use it
+  /// to log, report to support, or otherwise handle a value this plugin
+  /// does not recognize yet, without waiting for a plugin release that adds
+  /// it.
+  final String rawResult;
 
   final String exitTitle;
   final String exitMessage;
@@ -93,6 +104,7 @@ class KhipuResult {
   factory KhipuResult.fromPigeon(pigeon.KhipuResult r) => KhipuResult(
         operationId: r.operationId,
         result: r.result,
+        rawResult: r.rawResult,
         exitTitle: r.exitTitle,
         exitMessage: r.exitMessage,
         exitUrl: r.exitUrl,
@@ -110,6 +122,7 @@ class KhipuResult {
       other is KhipuResult &&
       other.operationId == operationId &&
       other.result == result &&
+      other.rawResult == rawResult &&
       other.exitTitle == exitTitle &&
       other.exitMessage == exitMessage &&
       other.exitUrl == exitUrl &&
@@ -129,6 +142,7 @@ class KhipuResult {
   int get hashCode => Object.hash(
         operationId,
         result,
+        rawResult,
         exitTitle,
         exitMessage,
         exitUrl,
@@ -137,7 +151,11 @@ class KhipuResult {
         Object.hashAll(events),
       );
 
+  // rawResult is included, unlike most other fields, because it is the one
+  // piece of information toString can give about an unknown status that
+  // `result: $result` alone cannot: `result` collapses to `unknown` and
+  // says nothing about what the server actually sent.
   @override
   String toString() => 'KhipuResult(operationId: $operationId, '
-      'result: $result, events: ${events.length})';
+      'result: $result, rawResult: $rawResult, events: ${events.length})';
 }

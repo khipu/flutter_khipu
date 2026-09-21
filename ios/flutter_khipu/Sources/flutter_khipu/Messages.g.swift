@@ -443,6 +443,12 @@ struct KhipuEvent: Hashable, CustomStringConvertible {
 struct KhipuResult: Hashable, CustomStringConvertible {
   var operationId: String
   var result: KhipuResultStatus
+  /// What the SDK actually sent for [result], before it was matched against
+  /// the known cases. Always present, even when [result] is not
+  /// [KhipuResultStatus.unknown]: this is what lets a merchant log, report
+  /// to support, or otherwise handle a value this plugin doesn't recognize
+  /// yet, without waiting for a plugin release that adds it.
+  var rawResult: String
   var exitTitle: String
   var exitMessage: String
   var events: [KhipuEvent]
@@ -455,16 +461,18 @@ struct KhipuResult: Hashable, CustomStringConvertible {
   static func fromList(_ pigeonVar_list: [Any?]) -> KhipuResult? {
     let operationId = pigeonVar_list[0] as! String
     let result = pigeonVar_list[1] as! KhipuResultStatus
-    let exitTitle = pigeonVar_list[2] as! String
-    let exitMessage = pigeonVar_list[3] as! String
-    let events = pigeonVar_list[4] as! [KhipuEvent]
-    let exitUrl: String? = nilOrValue(pigeonVar_list[5])
-    let failureReason: String? = nilOrValue(pigeonVar_list[6])
-    let continueUrl: String? = nilOrValue(pigeonVar_list[7])
+    let rawResult = pigeonVar_list[2] as! String
+    let exitTitle = pigeonVar_list[3] as! String
+    let exitMessage = pigeonVar_list[4] as! String
+    let events = pigeonVar_list[5] as! [KhipuEvent]
+    let exitUrl: String? = nilOrValue(pigeonVar_list[6])
+    let failureReason: String? = nilOrValue(pigeonVar_list[7])
+    let continueUrl: String? = nilOrValue(pigeonVar_list[8])
 
     return KhipuResult(
       operationId: operationId,
       result: result,
+      rawResult: rawResult,
       exitTitle: exitTitle,
       exitMessage: exitMessage,
       events: events,
@@ -477,6 +485,7 @@ struct KhipuResult: Hashable, CustomStringConvertible {
     return [
       operationId,
       result,
+      rawResult,
       exitTitle,
       exitMessage,
       events,
@@ -489,13 +498,14 @@ struct KhipuResult: Hashable, CustomStringConvertible {
     if Swift.type(of: lhs) != Swift.type(of: rhs) {
       return false
     }
-    return MessagesPigeonInternal.deepEquals(lhs.operationId, rhs.operationId) && MessagesPigeonInternal.deepEquals(lhs.result, rhs.result) && MessagesPigeonInternal.deepEquals(lhs.exitTitle, rhs.exitTitle) && MessagesPigeonInternal.deepEquals(lhs.exitMessage, rhs.exitMessage) && MessagesPigeonInternal.deepEquals(lhs.events, rhs.events) && MessagesPigeonInternal.deepEquals(lhs.exitUrl, rhs.exitUrl) && MessagesPigeonInternal.deepEquals(lhs.failureReason, rhs.failureReason) && MessagesPigeonInternal.deepEquals(lhs.continueUrl, rhs.continueUrl)
+    return MessagesPigeonInternal.deepEquals(lhs.operationId, rhs.operationId) && MessagesPigeonInternal.deepEquals(lhs.result, rhs.result) && MessagesPigeonInternal.deepEquals(lhs.rawResult, rhs.rawResult) && MessagesPigeonInternal.deepEquals(lhs.exitTitle, rhs.exitTitle) && MessagesPigeonInternal.deepEquals(lhs.exitMessage, rhs.exitMessage) && MessagesPigeonInternal.deepEquals(lhs.events, rhs.events) && MessagesPigeonInternal.deepEquals(lhs.exitUrl, rhs.exitUrl) && MessagesPigeonInternal.deepEquals(lhs.failureReason, rhs.failureReason) && MessagesPigeonInternal.deepEquals(lhs.continueUrl, rhs.continueUrl)
   }
 
   func hash(into hasher: inout Hasher) {
     hasher.combine("KhipuResult")
     MessagesPigeonInternal.deepHash(value: operationId, hasher: &hasher)
     MessagesPigeonInternal.deepHash(value: result, hasher: &hasher)
+    MessagesPigeonInternal.deepHash(value: rawResult, hasher: &hasher)
     MessagesPigeonInternal.deepHash(value: exitTitle, hasher: &hasher)
     MessagesPigeonInternal.deepHash(value: exitMessage, hasher: &hasher)
     MessagesPigeonInternal.deepHash(value: events, hasher: &hasher)
@@ -505,7 +515,7 @@ struct KhipuResult: Hashable, CustomStringConvertible {
   }
 
   public var description: String {
-    return "KhipuResult(operationId: \(String(describing: operationId)), result: \(String(describing: result)), exitTitle: \(String(describing: exitTitle)), exitMessage: \(String(describing: exitMessage)), events: \(String(describing: events)), exitUrl: \(String(describing: exitUrl)), failureReason: \(String(describing: failureReason)), continueUrl: \(String(describing: continueUrl)))"
+    return "KhipuResult(operationId: \(String(describing: operationId)), result: \(String(describing: result)), rawResult: \(String(describing: rawResult)), exitTitle: \(String(describing: exitTitle)), exitMessage: \(String(describing: exitMessage)), events: \(String(describing: events)), exitUrl: \(String(describing: exitUrl)), failureReason: \(String(describing: failureReason)), continueUrl: \(String(describing: continueUrl)))"
   }
 }
 

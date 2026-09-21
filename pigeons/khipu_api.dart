@@ -76,6 +76,13 @@ class KhipuEvent {
 class KhipuResult {
   late String operationId;
   late KhipuResultStatus result;
+
+  /// What the SDK actually sent for [result], before it was matched against
+  /// the known cases. Always present, even when [result] is not
+  /// [KhipuResultStatus.unknown]: this is what lets a merchant log, report
+  /// to support, or otherwise handle a value this plugin doesn't recognize
+  /// yet, without waiting for a plugin release that adds it.
+  late String rawResult;
   late String exitTitle;
   late String exitMessage;
   late List<KhipuEvent> events;

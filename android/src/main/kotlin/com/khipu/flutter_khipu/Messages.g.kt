@@ -462,6 +462,14 @@ data class KhipuEvent (
 data class KhipuResult (
   val operationId: String,
   val result: KhipuResultStatus,
+  /**
+   * What the SDK actually sent for [result], before it was matched against
+   * the known cases. Always present, even when [result] is not
+   * [KhipuResultStatus.unknown]: this is what lets a merchant log, report
+   * to support, or otherwise handle a value this plugin doesn't recognize
+   * yet, without waiting for a plugin release that adds it.
+   */
+  val rawResult: String,
   val exitTitle: String,
   val exitMessage: String,
   val events: List<KhipuEvent>,
@@ -474,19 +482,21 @@ data class KhipuResult (
     fun fromList(pigeonVar_list: List<Any?>): KhipuResult {
       val operationId = pigeonVar_list[0] as String
       val result = pigeonVar_list[1] as KhipuResultStatus
-      val exitTitle = pigeonVar_list[2] as String
-      val exitMessage = pigeonVar_list[3] as String
-      val events = pigeonVar_list[4] as List<KhipuEvent>
-      val exitUrl = pigeonVar_list[5] as String?
-      val failureReason = pigeonVar_list[6] as String?
-      val continueUrl = pigeonVar_list[7] as String?
-      return KhipuResult(operationId, result, exitTitle, exitMessage, events, exitUrl, failureReason, continueUrl)
+      val rawResult = pigeonVar_list[2] as String
+      val exitTitle = pigeonVar_list[3] as String
+      val exitMessage = pigeonVar_list[4] as String
+      val events = pigeonVar_list[5] as List<KhipuEvent>
+      val exitUrl = pigeonVar_list[6] as String?
+      val failureReason = pigeonVar_list[7] as String?
+      val continueUrl = pigeonVar_list[8] as String?
+      return KhipuResult(operationId, result, rawResult, exitTitle, exitMessage, events, exitUrl, failureReason, continueUrl)
     }
   }
   fun toList(): List<Any?> {
     return listOf(
       operationId,
       result,
+      rawResult,
       exitTitle,
       exitMessage,
       events,
@@ -503,13 +513,14 @@ data class KhipuResult (
       return true
     }
     val other = other as KhipuResult
-    return MessagesPigeonUtils.deepEquals(this.operationId, other.operationId) && MessagesPigeonUtils.deepEquals(this.result, other.result) && MessagesPigeonUtils.deepEquals(this.exitTitle, other.exitTitle) && MessagesPigeonUtils.deepEquals(this.exitMessage, other.exitMessage) && MessagesPigeonUtils.deepEquals(this.events, other.events) && MessagesPigeonUtils.deepEquals(this.exitUrl, other.exitUrl) && MessagesPigeonUtils.deepEquals(this.failureReason, other.failureReason) && MessagesPigeonUtils.deepEquals(this.continueUrl, other.continueUrl)
+    return MessagesPigeonUtils.deepEquals(this.operationId, other.operationId) && MessagesPigeonUtils.deepEquals(this.result, other.result) && MessagesPigeonUtils.deepEquals(this.rawResult, other.rawResult) && MessagesPigeonUtils.deepEquals(this.exitTitle, other.exitTitle) && MessagesPigeonUtils.deepEquals(this.exitMessage, other.exitMessage) && MessagesPigeonUtils.deepEquals(this.events, other.events) && MessagesPigeonUtils.deepEquals(this.exitUrl, other.exitUrl) && MessagesPigeonUtils.deepEquals(this.failureReason, other.failureReason) && MessagesPigeonUtils.deepEquals(this.continueUrl, other.continueUrl)
   }
 
   override fun hashCode(): Int {
     var result = javaClass.hashCode()
     result = 31 * result + MessagesPigeonUtils.deepHash(this.operationId)
     result = 31 * result + MessagesPigeonUtils.deepHash(this.result)
+    result = 31 * result + MessagesPigeonUtils.deepHash(this.rawResult)
     result = 31 * result + MessagesPigeonUtils.deepHash(this.exitTitle)
     result = 31 * result + MessagesPigeonUtils.deepHash(this.exitMessage)
     result = 31 * result + MessagesPigeonUtils.deepHash(this.events)
@@ -519,7 +530,7 @@ data class KhipuResult (
     return result
   }
   override fun toString(): String {
-    return "KhipuResult(operationId=$operationId, result=$result, exitTitle=$exitTitle, exitMessage=$exitMessage, events=$events, exitUrl=$exitUrl, failureReason=$failureReason, continueUrl=$continueUrl)"
+    return "KhipuResult(operationId=$operationId, result=$result, rawResult=$rawResult, exitTitle=$exitTitle, exitMessage=$exitMessage, events=$events, exitUrl=$exitUrl, failureReason=$failureReason, continueUrl=$continueUrl)"
   }
 }
 private open class MessagesPigeonCodec : StandardMessageCodec() {

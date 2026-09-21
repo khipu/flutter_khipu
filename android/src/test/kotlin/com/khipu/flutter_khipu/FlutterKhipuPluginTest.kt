@@ -216,6 +216,7 @@ class FlutterKhipuPluginTest {
                 KhipuResult(
                     operationId = "abc123",
                     result = KhipuResultStatus.OK,
+                    rawResult = "OK",
                     exitTitle = "Listo",
                     exitMessage = "Pago realizado",
                     exitUrl = "https://khipu.com/done",

@@ -34,6 +34,7 @@ void mockHost(
 /// A complete native result, in the generated types.
 pigeon.KhipuResult nativeResult({
   pigeon.KhipuResultStatus result = pigeon.KhipuResultStatus.ok,
+  String rawResult = 'OK',
   String? exitUrl = 'https://khipu.com/done',
   String? failureReason,
   String? continueUrl,
@@ -42,6 +43,7 @@ pigeon.KhipuResult nativeResult({
   return pigeon.KhipuResult(
     operationId: 'abc123',
     result: result,
+    rawResult: rawResult,
     exitTitle: 'Listo',
     exitMessage: 'Pago realizado',
     exitUrl: exitUrl,
@@ -316,22 +318,46 @@ void main() {
       expect(r, isNull);
     });
 
-    test('the five SDK statuses cross the channel', () async {
-      for (final pigeon.KhipuResultStatus s in <pigeon.KhipuResultStatus>[
-        pigeon.KhipuResultStatus.ok,
-        pigeon.KhipuResultStatus.error,
-        pigeon.KhipuResultStatus.warning,
-        pigeon.KhipuResultStatus.mustContinue,
-        pigeon.KhipuResultStatus.userCanceled,
+    test('the five SDK statuses cross the channel, with their raw text', () async {
+      for (final (pigeon.KhipuResultStatus, String) pair
+          in <(pigeon.KhipuResultStatus, String)>[
+        (pigeon.KhipuResultStatus.ok, 'OK'),
+        (pigeon.KhipuResultStatus.error, 'ERROR'),
+        (pigeon.KhipuResultStatus.warning, 'WARNING'),
+        (pigeon.KhipuResultStatus.mustContinue, 'CONTINUE'),
+        (pigeon.KhipuResultStatus.userCanceled, 'USER_CANCELED'),
       ]) {
-        mockHost((_) => nativeResult(result: s));
+        final (pigeon.KhipuResultStatus s, String raw) = pair;
+        mockHost((_) => nativeResult(result: s, rawResult: raw));
 
         final KhipuResult? r = await khipu.startOperation(
           const KhipuStartOperationOptions(operationId: 'abc123'),
         );
 
         expect(r!.result.name, s.name);
+        expect(r.rawResult, raw);
       }
+    });
+
+    test('an unknown status arrives as unknown but keeps the raw text',
+        () async {
+      // What the native side does when the SDK sends a value none of the
+      // five known cases match: `result` degrades to `unknown`, but
+      // `rawResult` still carries exactly what the server sent, so the
+      // merchant isn't left with just the word "unknown".
+      mockHost(
+        (_) => nativeResult(
+          result: pigeon.KhipuResultStatus.unknown,
+          rawResult: 'SOMETHING_NEW',
+        ),
+      );
+
+      final KhipuResult? r = await khipu.startOperation(
+        const KhipuStartOperationOptions(operationId: 'abc123'),
+      );
+
+      expect(r!.result, KhipuResultStatus.unknown);
+      expect(r.rawResult, 'SOMETHING_NEW');
     });
   });
 
@@ -340,6 +366,7 @@ void main() {
       const KhipuResult a = KhipuResult(
         operationId: 'abc123',
         result: KhipuResultStatus.ok,
+        rawResult: 'OK',
         exitTitle: 'Listo',
         exitMessage: 'Pago realizado',
         events: <KhipuEvent>[],
@@ -347,6 +374,7 @@ void main() {
       const KhipuResult b = KhipuResult(
         operationId: 'abc123',
         result: KhipuResultStatus.ok,
+        rawResult: 'OK',
         exitTitle: 'Listo',
         exitMessage: 'Pago realizado',
         events: <KhipuEvent>[],
@@ -360,6 +388,7 @@ void main() {
       const KhipuResult a = KhipuResult(
         operationId: 'abc123',
         result: KhipuResultStatus.userCanceled,
+        rawResult: 'USER_CANCELED',
         exitTitle: 'Cancelado',
         exitMessage: 'La persona salió',
         events: <KhipuEvent>[],

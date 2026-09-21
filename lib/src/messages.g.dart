@@ -383,6 +383,7 @@ class KhipuResult {
   KhipuResult({
     required this.operationId,
     required this.result,
+    required this.rawResult,
     required this.exitTitle,
     required this.exitMessage,
     required this.events,
@@ -394,6 +395,13 @@ class KhipuResult {
   String operationId;
 
   KhipuResultStatus result;
+
+  /// What the SDK actually sent for [result], before it was matched against
+  /// the known cases. Always present, even when [result] is not
+  /// [KhipuResultStatus.unknown]: this is what lets a merchant log, report
+  /// to support, or otherwise handle a value this plugin doesn't recognize
+  /// yet, without waiting for a plugin release that adds it.
+  String rawResult;
 
   String exitTitle;
 
@@ -411,6 +419,7 @@ class KhipuResult {
     return <Object?>[
       operationId,
       result,
+      rawResult,
       exitTitle,
       exitMessage,
       events,
@@ -428,12 +437,13 @@ class KhipuResult {
     return KhipuResult(
       operationId: result[0]! as String,
       result: result[1]! as KhipuResultStatus,
-      exitTitle: result[2]! as String,
-      exitMessage: result[3]! as String,
-      events: (result[4]! as List<Object?>).cast<KhipuEvent>(),
-      exitUrl: result[5] as String?,
-      failureReason: result[6] as String?,
-      continueUrl: result[7] as String?,
+      rawResult: result[2]! as String,
+      exitTitle: result[3]! as String,
+      exitMessage: result[4]! as String,
+      events: (result[5]! as List<Object?>).cast<KhipuEvent>(),
+      exitUrl: result[6] as String?,
+      failureReason: result[7] as String?,
+      continueUrl: result[8] as String?,
     );
   }
 
@@ -446,7 +456,7 @@ class KhipuResult {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(operationId, other.operationId) && _deepEquals(result, other.result) && _deepEquals(exitTitle, other.exitTitle) && _deepEquals(exitMessage, other.exitMessage) && _deepEquals(events, other.events) && _deepEquals(exitUrl, other.exitUrl) && _deepEquals(failureReason, other.failureReason) && _deepEquals(continueUrl, other.continueUrl);
+    return _deepEquals(operationId, other.operationId) && _deepEquals(result, other.result) && _deepEquals(rawResult, other.rawResult) && _deepEquals(exitTitle, other.exitTitle) && _deepEquals(exitMessage, other.exitMessage) && _deepEquals(events, other.events) && _deepEquals(exitUrl, other.exitUrl) && _deepEquals(failureReason, other.failureReason) && _deepEquals(continueUrl, other.continueUrl);
   }
 
   @override
@@ -455,7 +465,7 @@ class KhipuResult {
 
   @override
   String toString() {
-    return 'KhipuResult(operationId: $operationId, result: $result, exitTitle: $exitTitle, exitMessage: $exitMessage, events: $events, exitUrl: $exitUrl, failureReason: $failureReason, continueUrl: $continueUrl)';
+    return 'KhipuResult(operationId: $operationId, result: $result, rawResult: $rawResult, exitTitle: $exitTitle, exitMessage: $exitMessage, events: $events, exitUrl: $exitUrl, failureReason: $failureReason, continueUrl: $continueUrl)';
   }
 }
 

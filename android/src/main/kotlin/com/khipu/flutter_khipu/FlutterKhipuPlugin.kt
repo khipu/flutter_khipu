@@ -128,6 +128,7 @@ class FlutterKhipuPlugin : FlutterPlugin, KhipuHostApi,
     private fun SdkKhipuResult.toPigeon(): KhipuResult = KhipuResult(
         operationId = operationId,
         result = statusOf(result),
+        rawResult = result ?: "",
         exitTitle = exitTitle,
         exitMessage = exitMessage,
         exitUrl = exitUrl,
