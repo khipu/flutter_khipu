@@ -1,3 +1,22 @@
+# 2.0.2
+
+Documentation only, again: no code changes, no behaviour changes.
+
+**A late return does not look different through `failureReason`.** When Android tore the payment
+down and the payer comes back more than three minutes later, the operation ends with the same
+`result` *and* the same `failureReason` as an ordinary abandonment — what changes is that
+`exitTitle` and `exitMessage` arrive empty. 2.0.1 implied `failureReason` told the two apart. If
+you show those strings as-is, expect them blank.
+
+**`theme` defaults to `system`** on both platforms when you omit it. That was not documented
+anywhere.
+
+1.9.0's README got the first point right and the 2.0.0 docs pass dropped it, along with the two
+claims 2.0.1 corrected — three errors in the same paragraph, from one rewrite that reasoned about
+the types instead of measuring the behaviour.
+
+Neither native client pin moves: `khipu-client-android 2.28.5`, `KhipuClientIOS 2.17.1`.
+
 # 2.0.1
 
 Documentation only: no code changes, no behaviour changes. Two claims in 2.0.0's README were

@@ -345,7 +345,7 @@ final KhipuResult? result = await FlutterKhipu().startOperation(
     showFooter: true, // If true, a message is displayed with a Khipu logo
     showMerchantLogo: true, // If true, shows the merchant's logo in the top bar
     showPaymentDetails: true, // If true, shows the payment's amount and detail
-    theme: KhipuTheme.system, // The theme of the interface: light, dark or system
+    theme: KhipuTheme.system, // The theme of the interface: light, dark or system. Omitting it defaults to system on both platforms
     colors: KhipuColors(
       lightBackground: '<hexColor>', // Optional. General background color in light mode
       lightOnBackground: '<hexColor>', // Optional. Color of elements on the general background in light mode
@@ -427,12 +427,20 @@ if (url != null && url.isNotEmpty) { open(url); }
 On a completed payment `exitUrl` does carry a real URL, which is what makes the empty case easy to
 miss: it only shows up when the payer walks away.
 
-Two uncommon paths differ. If Android tore the payment down and the payer returns more than three
-minutes later, the SDK ends the operation the same way but with the exit strings empty. And if the
-SDK cannot parse the message that ended the operation, it returns `result:
-KhipuResultStatus.error` with `failureReason` **null** — it does not know why the payment failed,
-and says so rather than guessing. So `failureReason` distinguishes the three: `"USER_CANCELED"`
-for abandonment, `null` for an unparseable ending, and anything else for a real failure.
+Two uncommon paths differ, and only one of them is visible through `failureReason`.
+
+If Android tore the payment down and the payer returns more than three minutes later, the SDK ends
+the operation with the **same `result` and the same `failureReason`** — what changes is that
+`exitTitle` and `exitMessage` arrive empty. So `failureReason` does not separate this from an
+ordinary abandonment: if you show those two strings as-is, handle them being blank.
+
+If instead the SDK cannot parse the message that ended the operation, it returns
+`result: KhipuResultStatus.error` with `failureReason` **null** — it does not know why the payment
+failed, and says so rather than guessing.
+
+So `failureReason` tells apart abandonment (`"USER_CANCELED"`), an unparseable ending (`null`) and
+a real failure (anything else) — but not an abandonment from a late return, which only the empty
+exit strings reveal.
 
 ## Errors
 

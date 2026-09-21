@@ -4,7 +4,7 @@
 #
 Pod::Spec.new do |s|
   s.name             = 'flutter_khipu'
-  s.version          = '2.0.1'
+  s.version          = '2.0.2'
   s.summary          = 'Flutter plugin for Khipu payments.'
   s.description      = <<-DESC
 Flutter plugin for Khipu, this plugin enables a flutter app to use Khipu to authorize payments.
