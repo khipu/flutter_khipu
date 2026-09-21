@@ -449,17 +449,65 @@ Backlog, sin resolución, generador sin tocar—, y es el aporte de este reposit
 D y E son **un solo paso**. El esquema de Pigeon *es* el rediseño de tipos; hacerlos
 por separado significa escribir los tipos dos veces.
 
-### 7.1 Spike previo, bloqueante
+### 7.1 Spike previo, bloqueante — CERRADO, el ciclo sigue en pie
 
 Verificar que el Swift generado por Pigeon funcione con **SPM y CocoaPods a la vez**.
 El plugin soporta ambos empaquetados desde 1.7.0 y no puede dejar de hacerlo. Si esto
 no cierra, se cae E y hay que replantear el ciclo.
+
+**Corrido el 2026-09-21 con Pigeon 29.0.2, Flutter 3.44.9 y Xcode 27. Los dos caminos
+cierran.** No con el esquema definitivo: con uno mínimo que ejercita a propósito las
+formas de §7.2 que podrían romper un empaquetado — `KhipuColors` anidado, los dos enums,
+un método `@async` con retorno nullable y `List<KhipuEvent>`.
+
+| | compila | canal en el binario | round-trip en simulador |
+|---|---|---|---|
+| SPM | sí | `Runner.debug.dylib` | sí |
+| CocoaPods | sí | `flutter_khipu.framework` | sí |
+
+Medido con control positivo en cada paso: los canales se buscaron por su nombre literal
+(`dev.flutter.pigeon.flutter_khipu.KhipuHostApi.*`) dentro del binario, y las dos corridas
+en simulador se etiquetaron distinto para no confundirlas. El round-trip no sólo volvió:
+el nativo devolvió eco de lo recibido (`theme=dark lightPrimary=#8347AD locale=es_CL`), o
+sea que **el enum y la clase anidada cruzaron de ida**, que es lo que hoy no pasa.
+
+Dos advertencias sobre cómo medirlo de nuevo, porque las dos producen un verde falso:
+
+- `flutter build … | tail` devuelve el código de salida de `tail`. Un build fallado se ve
+  como exit 0. Es el mismo defecto que se corrigió en el CI en `bc42eae`.
+- En modo SPM el binario `Runner` es un stub de ~70 KB; el código vive en
+  `Runner.debug.dylib`. Buscar símbolos en `Runner` da vacío aunque todo esté bien.
 
 ### 7.2 Alcance
 
 - `pigeons/khipu_api.dart` con `KhipuColors` **anidado de verdad** (hoy viaja aplanado
   en 12 claves de primer nivel), `enum KhipuTheme`, `enum KhipuResultStatus` con caso
   `unknown` para no romper ante valores nuevos del servidor.
+- **Los nombres del esquema chocan con el SDK de iOS.** `KhipuClientIOS` exporta
+  `public struct KhipuColors`, `KhipuResult`
+  y `KhipuEvent`. El Swift que genera Pigeon cae en el mismo módulo que
+  `FlutterKhipuPlugin.swift`, que hace `import KhipuClientIOS`, y Swift prefiere el tipo
+  local: el generado **sombrea** al del SDK. Medido en el spike — el build se cayó con
+  `Type 'KhipuColors' has no member 'Builder'`, porque el `.Builder` es del SDK.
+
+  **Decisión de Emilio, 2026-09-21: calificar con el módulo.** El código escrito a mano
+  nombra los tipos del SDK como `KhipuClientIOS.KhipuColors.Builder()`, y el esquema
+  conserva los nombres naturales. Cuesta una línea por uso y no mete nombres de compromiso
+  en la API que después hay que traducir.
+
+  Descartado: renombrar los tipos generados. Habría protegido al próximo que escriba Swift
+  en este módulo, pero a cambio de nombres feos en el generado y una capa más de traducción
+  en los wrappers.
+
+  Hoy el único uso que colisiona es `FlutterKhipuPlugin.swift:123`
+  (`var colorsBuilder = KhipuColors.Builder()`). El de la línea 78 no:
+  `KhipuOptions` no está en el esquema, como tampoco `KhipuLauncher`. Conviene calificar
+  **todos** los usos del SDK igual, no sólo el que rompe, para que la regla sea legible y
+  el próximo tipo que entre al esquema no reabra el problema en silencio.
+
+  Del lado Dart la colisión existe igual, pero **se disuelve sola**: los tipos del plugin
+  pasan a *ser* los generados. En Swift no se disuelve, porque el SDK va a seguir
+  exportando los suyos.
 - Nulabilidad ajustada a §2.3.
 - Los tipos generados van a `lib/src/` con **wrappers finos escritos a mano** encima
   (D5). Desacopla la API publicada del estilo de codegen de Pigeon: regenerar no puede
@@ -471,6 +519,12 @@ no cierra, se cae E y hay que replantear el ciclo.
 - `List<KhipuEvent>` en vez de `Iterable` (hoy es el `.map` perezoso de
   `flutter_khipu.dart:105`, que se re-parsea en cada iteración), `const []` en vez de
   `null`, `final` en todos los campos, constructores `const`, `==`/`hashCode`/`toString`.
+
+  Ojo con qué entrega Pigeon: medido en el spike, `events` llega como
+  `CastList<Object?, KhipuEvent>`, no como una `List` densa. Satisface el tipo estático y
+  no re-parsea como el `.map` de hoy, pero sigue siendo una vista sobre la lista de
+  origen. Si lo que se quiere es una lista propia, el wrapper a mano tiene que hacer
+  `.toList()`; conviene decidirlo ahí y no heredar la forma del codegen.
 - **Codificación del vacío: las tres claves opcionales viajan SIEMPRE, con `null`.** Hoy las
   dos plataformas discrepan y ninguna lo decidió: Android omite la clave
   (`exitUrl?.let { map["exitUrl"] = it }`) y iOS la manda (`khipuResult.exitUrl as Any`), en
@@ -495,6 +549,22 @@ no cierra, se cae E y hay que replantear el ciclo.
   Concretamente: el esquema de Pigeon debe emitir las tres claves siempre, y el test de
   paridad debe cubrirlo. Decidido el 2026-09-15 con la sesión de capacitor-khipu.
 
+  **El spike del 2026-09-21 cambia cómo se cumple esto, no si se cumple.** Pigeon no
+  serializa un mapa: serializa una **lista posicional**. No hay clave que omitir, así que
+  la discrepancia que este requisito venía a cerrar deja de ser representable — un campo
+  vacío ocupa su posición con `null` o el mensaje no decodifica. Medido de punta a punta
+  en simulador: con el nativo devolviendo los tres en `nil`, Dart recibió
+  `exitUrl=null failureReason=null continueUrl=null`.
+
+  Dos consecuencias para el plan. El requisito **no necesita nada en el esquema**: se
+  cumple por construcción en cuanto los tres campos sean nullable. Y el "test de paridad"
+  cambia de objeto: ya no puede comparar presencia de claves entre plataformas, porque no
+  hay claves; lo que queda por cubrir es que los tres campos sigan siendo nullable en el
+  esquema, que es lo único que un cambio futuro podría romper.
+
+  Esto no toca la decisión de los otros tres puentes, que siguen mandando `null` en un
+  objeto JSON de verdad, donde la distinción sí se ve.
+
 ### 7.3 Qué se borra
 
 - `test/method_channel_seam_test.dart` completo. Su comentario de cabecera diagnostica
@@ -508,6 +578,31 @@ no cierra, se cae E y hay que replantear el ciclo.
 Guía 1.x → 2.0 en README y CHANGELOG. Los cambios rompedores son: `theme` pasa de
 `String` a enum, `result` pasa de `String?` a enum, cinco campos de `KhipuResult` dejan
 de ser nulos, `events` pasa de `Iterable?` a `List`, y los campos dejan de ser mutables.
+
+### 7.5 Fricciones del entorno, medidas en el spike
+
+No son de Pigeon ni del diseño, pero le van a costar horas a quien implemente el ciclo si
+las encuentra de cero. Todas verificadas el 2026-09-21.
+
+- **El checkout tiene que llamarse `flutter_khipu` para que el build por SPM funcione.**
+  Flutter monta el plugin en un symlink nombrado con el *basename del directorio raíz* del
+  paquete, y lo declara en el `Package.swift` generado con el `name:` del pubspec. Si no
+  coinciden, xcodebuild corta con `unable to override package 'flutter_khipu' because its
+  identity '<carpeta>' doesn't match override's identity (directory name) 'flutter_khipu'`.
+  Muerde en cualquier worktree y en cualquier clon con otro nombre de carpeta.
+- **CocoaPods no ve un archivo Swift nuevo hasta el próximo `pod install`; SPM sí, porque
+  toma el directorio por glob.** Con Pigeon generando archivos esto va a pasar seguido, y
+  el error no delata la causa: `Cannot find 'X' in scope`. Se confirma mirando si el
+  archivo aparece en `example/ios/Pods/Pods.xcodeproj/project.pbxproj`.
+- **`Package.swift` no declara `FlutterFramework`** y Flutter ya lo pide por consola en
+  cada build. Hoy es warning y los dos empaquetados compilan igual, incluso con el Swift
+  de Pigeon —que hace `import Flutter`— adentro. Conviene cerrarlo en este ciclo, que es
+  el que toca esa capa.
+- **Xcode 27 no acepta `IPHONEOS_DEPLOYMENT_TARGET` bajo 15.0**, y el `example/` está en
+  13.0 en tres lugares: el `Runner.xcodeproj`, el `Podfile` y —esto es lo que confunde—
+  el proyecto de Pods, donde `flutter_additional_ios_build_settings` lo **reimpone en cada
+  `pod install`**, así que subirlo en el Podfile no alcanza: hay que forzarlo en el
+  `post_install`. No es del plugin: una app pelada falla igual (ya medido el 2026-09-15).
 
 ---
 
@@ -531,6 +626,7 @@ Ningún ciclo se da por cerrado sin esto.
 9. 1.7.2 y 1.8.1 publicadas y verificadas desde cero contra la doc pública.
 
 **Ciclo 2:** todo lo anterior, más el spike de §7.1 cerrado en verde antes de empezar.
+Cerrado el 2026-09-21, con la decisión de nombres de §7.2 tomada: calificar con el módulo.
 
 ---
 
@@ -539,7 +635,8 @@ Ningún ciclo se da por cerrado sin esto.
 | Riesgo | Mitigación |
 |---|---|
 | El Nexus de Khipu no es accesible desde un runner de GitHub | Verificar antes de escribir el workflow; si falla, el build de Android queda fuera del CI y se documenta |
-| Pigeon no convive con SPM + CocoaPods | Spike bloqueante en §7.1; si falla, se cae E |
+| ~~Pigeon no convive con SPM + CocoaPods~~ | **Descartado el 2026-09-21**: el spike de §7.1 cerró en los dos empaquetados, con round-trip en simulador |
+| Los tipos generados sombrean a los del SDK de iOS | Medido en el spike, rompe el build; se califican con el módulo todos los usos del SDK en Swift (§7.2) |
 | El refuerzo de Android tapa un bug real del SDK en vez de exponerlo | El ticket upstream de §6 va igual; el fallback no reemplaza el arreglo de origen |
 | La matriz de §2.2 cambia en una versión futura del SDK | Es exactamente lo que pide el punto 2 del ticket upstream |
 | 1.7.2 se publica con cambios que nadie pidió | El alcance de `1.7.x` es sólo A+C; B no entra |
