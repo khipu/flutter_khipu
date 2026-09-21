@@ -186,86 +186,183 @@ authorization fails at the banks that ask for the check.
 Khipu's own documentation is the canonical source for this behaviour; this section
 describes what the plugin's pinned client does today.
 
-## Usage
+## Migrating from 1.x
 
+Six breaking changes. Most integrations only hit the first two.
+
+### 1. `theme` is an enum
+
+```dart
+// 1.x
+KhipuStartOperationOptions(operationId: id, theme: 'dark')
+// 2.0
+const KhipuStartOperationOptions(operationId: id, theme: KhipuTheme.dark)
+```
+
+A typo used to be silently ignored — the native side compared the string and
+fell through. Now it does not compile.
+
+### 2. `result` is an enum
+
+```dart
+// 1.x
+if (result?.result == 'OK') { … }
+// 2.0
+if (result?.result == KhipuResultStatus.ok) { … }
+```
+
+The cases are `ok`, `error`, `warning`, `mustContinue`, `userCanceled` and
+`unknown`. `mustContinue` is the value the SDK sends as `CONTINUE`; it is
+spelled differently because `continue` is a reserved word.
+
+**Handle `unknown`.** It is what you get if the server starts sending a
+result this plugin does not know yet. In 1.x that value reached you as a raw
+string; treating it as a failure is usually right, but it is your call.
+
+### 3. Five fields are no longer nullable
+
+`operationId`, `result`, `exitTitle`, `exitMessage` and `events` are always
+present. They never were null in practice — 1.7.1 widened every field to
+`String?` to fix a crash, and widened too far.
+
+```dart
+// 1.x
+final String title = result!.exitTitle ?? '';
+// 2.0
+final String title = result!.exitTitle;
+```
+
+`exitUrl`, `failureReason` and `continueUrl` stay nullable. They are exactly
+the three the native SDKs declare optional.
+
+### 4. `events` is a `List`, never null
+
+```dart
+// 1.x
+for (final e in result!.events ?? const <KhipuEvent>[]) { … }
+// 2.0
+for (final e in result!.events) { … }
+```
+
+Empty means empty. It is also unmodifiable, and it no longer re-parses on
+every pass: in 1.x it was a lazy `Iterable` that re-decoded each time you
+iterated it.
+
+### 5. The types are immutable
+
+Fields are `final` and the constructors are `const`. If you were mutating
+options after building them, build them with the values instead.
+
+```dart
+// 1.x
+final options = KhipuStartOperationOptions(operationId: id);
+options.title = 'My shop';
+// 2.0
+const options = KhipuStartOperationOptions(operationId: id, title: 'My shop');
+```
+
+They also have `==`, `hashCode` and `toString`, so two results with the same
+fields compare equal.
+
+### 6. Two files are gone
+
+`flutter_khipu_platform_interface.dart` and `flutter_khipu_method_channel.dart`
+no longer exist. `package:flutter_khipu/flutter_khipu.dart` is the only import,
+and it is all you needed unless you were extending the platform interface.
+
+## Usage
 
 ```dart
 import 'package:flutter_khipu/flutter_khipu.dart';
 
 ...
 
-KhipuResult? result =
-    await FlutterKhipu().startOperation(KhipuStartOperationOptions(
-                                            operationId: "<string>", // The unique identifier of the payment intent
-                                            title: "<string>", // Text to show in the top bar
-                                            titleImageUrl: "<string>", // Image to show centered in the top bar (it replaces the title)
-                                            locale: "<string>", // Regional settings for the interface language. The standard format combines an ISO 639-1 language code and an ISO 3166 country code. For example, "es_CL" for Spanish (Chile).
-                                            skipExitPage: false, // If true, skips the exit page at the end of the payment process, whether successful or failed.
-                                            skipExitSuccessPage: false, // If true, skips the exit page at the end of the payment process if it was successful.
-                                            showFooter: true, // If true, a message is displayed with a Khipu logo
-                                            theme: "<string>", // The theme of the interface, can be light, dark or system
-                                            colors: KhipuColors(
-                                                lightBackground: "<hexColor>", //Optional General background color in light mode
-                                                lightOnBackground: "<hexColor>", //Optional Color of elements on the general background in light mode
-                                                lightPrimary: "<hexColor>", //Optional Primary color in light mode.
-                                                lightOnPrimary: "<hexColor>", //Optional Color of elements on the primary color in light mode.
-                                                lightTopBarContainer: "<hexColor>", //Optional Background color for the top bar in light mode.
-                                                lightOnTopBarContainer: "<hexColor>", //Optional Color of the elements on the top bar in light mode.
-                                                darkBackground: "<hexColor>", //Optional General background color in dark mode
-                                                darkOnBackground: "<hexColor>", //Optional Color of elements on the general background in dark mode
-                                                darkPrimary: "<hexColor>", //Optional Primary color in dark mode.
-                                                darkOnPrimary: "<hexColor>", //Optional Color of elements on the primary color in dark mode.
-                                                darkTopBarContainer: "<hexColor>", //Optional Background color for the top bar in dark mode.
-                                                darkOnTopBarContainer: "<hexColor>", //Optional Color of the elements on the top bar in dark mode.
-                                            )));
-
+final KhipuResult? result = await FlutterKhipu().startOperation(
+  const KhipuStartOperationOptions(
+    operationId: '<string>', // The unique identifier of the payment intent
+    title: '<string>', // Text to show in the top bar
+    titleImageUrl: '<string>', // Image to show centered in the top bar (it replaces the title)
+    locale: '<string>', // Regional settings for the interface language. The standard format combines an ISO 639-1 language code and an ISO 3166 country code. For example, "es_CL" for Spanish (Chile).
+    skipExitPage: false, // If true, skips the exit page at the end of the payment process, whether successful or failed.
+    skipExitSuccessPage: false, // If true, skips the exit page at the end of the payment process if it was successful.
+    showFooter: true, // If true, a message is displayed with a Khipu logo
+    showMerchantLogo: true, // If true, shows the merchant's logo in the top bar
+    showPaymentDetails: true, // If true, shows the payment's amount and detail
+    theme: KhipuTheme.system, // The theme of the interface: light, dark or system
+    colors: KhipuColors(
+      lightBackground: '<hexColor>', // Optional. General background color in light mode
+      lightOnBackground: '<hexColor>', // Optional. Color of elements on the general background in light mode
+      lightPrimary: '<hexColor>', // Optional. Primary color in light mode
+      lightOnPrimary: '<hexColor>', // Optional. Color of elements on the primary color in light mode
+      lightTopBarContainer: '<hexColor>', // Optional. Background color for the top bar in light mode
+      lightOnTopBarContainer: '<hexColor>', // Optional. Color of the elements on the top bar in light mode
+      darkBackground: '<hexColor>', // Optional. General background color in dark mode
+      darkOnBackground: '<hexColor>', // Optional. Color of elements on the general background in dark mode
+      darkPrimary: '<hexColor>', // Optional. Primary color in dark mode
+      darkOnPrimary: '<hexColor>', // Optional. Color of elements on the primary color in dark mode
+      darkTopBarContainer: '<hexColor>', // Optional. Background color for the top bar in dark mode
+      darkOnTopBarContainer: '<hexColor>', // Optional. Color of the elements on the top bar in dark mode
+    ),
+  ),
+);
 ```
 
-The `KhipuResult` object will contain the following fields.
+`startOperation` returns `null` only if the native side finished without a result at all; in
+practice you always get a `KhipuResult`, whose fields are:
 
-- operationId : String? (Optional) The unique identifier for the payment intent.
-- exitTitle : String? (Optional) Title that will be displayed to the user on the exit screen, reflecting the outcome of the operation.
-- exitMessage : String? (Optional) Message that will be displayed to the user, providing additional details about the outcome of the operation.
-- exitUrl : String? (Optional) URL to which the application will return at the end of the process.
-- result : String? (Optional) General outcome of the operation, possible values are:
-  - OK : Success
-  - ERROR : Error
-  - WARNING : Warnings
-  - CONTINUE : Operation needs more steps
-- failureReason : String? (Optional) Describes the reason for the failure, if the operation was not successful.
-- continueUrl : String? (Optional) Available only when the result is "CONTINUE", indicating the URL to follow to continue the operation.
-- events : Array (Optional) The steps taken to generate the payment, with their timestamps.
+- `operationId` : `String`. The unique identifier for the payment intent.
+- `result` : `KhipuResultStatus`. General outcome of the operation:
+  - `ok` : Success
+  - `error` : Error
+  - `warning` : Warning
+  - `mustContinue` : The operation needs more steps. The SDK sends this as `CONTINUE`; it is
+    spelled differently here because `continue` is a reserved word in Dart, Kotlin and Swift.
+  - `userCanceled` : The payer abandoned the payment.
+  - `unknown` : The server sent a status this version of the plugin does not know yet. Handle
+    it explicitly — treating it as a failure is usually right, but it is your call.
+- `exitTitle` : `String`. Title to show the user on the exit screen, reflecting the outcome.
+- `exitMessage` : `String`. Additional detail about the outcome, to show alongside `exitTitle`.
+- `exitUrl` : `String?`. URL to return the app to at the end of the process, if any.
+- `failureReason` : `String?`. Why it failed, if `result` was not `ok`.
+- `continueUrl` : `String?`. Present only when `result` is `mustContinue`; the URL to continue
+  the operation at.
+- `events` : `List<KhipuEvent>`. The steps taken to generate the payment, with their timestamps.
+  Empty, never null.
 
 ## Cancellation
 
-There is no separate "cancelled" outcome. When the payer abandons the payment — by backing out,
-which opens Khipu's own confirmation dialog, or by using its close button — the result arrives as
-a normal `KhipuResult` with `result` set to `"ERROR"` and `failureReason` set to
-`"USER_CANCELED"`. `exitTitle` and `exitMessage` carry Khipu's own localized wording for the
-abandonment, so you can show them as-is.
+When the payer abandons the payment — by backing out, which opens Khipu's own confirmation
+dialog, or by using its close button — the result arrives as a normal `KhipuResult` with `result`
+set to `KhipuResultStatus.userCanceled`. `exitTitle` and `exitMessage` carry Khipu's own localized
+wording for the abandonment, so you can show them as-is.
 
 Two uncommon paths differ. If Android tore the payment down and the payer returns more than three
-minutes later, the SDK ends the operation with the same `result` and `failureReason` but with the
-exit strings empty. And if the SDK cannot parse the message that ended the operation, it returns
-`result: "ERROR"` with `failureReason` **null** — it does not know why the payment failed, and
-says so rather than guessing. Treat both fields as optional.
+minutes later, the SDK ends the operation with the same `result` but with the exit strings empty.
+And if the SDK cannot parse the message that ended the operation, it returns
+`result: KhipuResultStatus.error` with `failureReason` **null** — it does not know why the payment
+failed, and says so rather than guessing.
 
 ## Errors
 
 `startOperation` throws a `PlatformException` when it cannot start or finish. Not
-every code exists on both platforms — the causes are platform-specific.
+every code exists on both platforms — the causes are platform-specific, and only one
+code, `OPERATION_IN_PROGRESS`, exists on both.
 
 | Code | Android | iOS | Cause |
 |---|:-:|:-:|---|
-| `MISSING_OPERATION_ID` | ✓ | ✓ | No `operationId` was given |
 | `OPERATION_IN_PROGRESS` | ✓ | ✓ | A Khipu operation is already running |
 | `NO_ACTIVITY` | ✓ | | The plugin is attached to the engine but not to an activity |
 | `NO_VIEW_CONTROLLER` | | ✓ | No view controller was available to present from |
-| `BAD_ARGUMENT_DICTIONARY` | | ✓ | The arguments were not a dictionary |
 | `INVALID_OPTIONS` | ✓ | | The options could not be mapped — check your colour strings |
 | `LAUNCH_FAILED` | ✓ | | Khipu's activity could not be started |
 | `NO_RESULT` | ✓ | | Khipu returned without a result |
 | `ACTIVITY_DETACHED` | ✓ | | The activity went away before Khipu returned |
+
+Two codes from 1.x are gone: `MISSING_OPERATION_ID` and `BAD_ARGUMENT_DICTIONARY`. Both
+described a malformed call, and the channel can no longer deliver one — its shape is now
+generated from a Pigeon schema that declares `operationId` as non-null, so the generated codec
+rejects a malformed message before `startOperation` ever runs. That class of call became
+unreachable rather than unhandled.
 
 `NO_RESULT` and `ACTIVITY_DETACHED` can both fire on a payment that actually succeeded. The
 plugin answers with one of them because leaving the `Future` unresolved would be worse, not
