@@ -2,10 +2,10 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// El podspec y el Package.swift tienen que declarar la misma versión de
-/// KhipuClientIOS, y el podspec la misma versión que el pubspec. Son tres
-/// archivos que nadie compara, y el podspec se quedó en 0.0.1 durante ocho
-/// releases sin que nada lo notara.
+/// The podspec and Package.swift have to declare the same KhipuClientIOS
+/// version, and the podspec the same version as the pubspec. They also have
+/// to declare the same iOS floor. These are files nobody compares, and the
+/// podspec stayed at 0.0.1 for eight releases without anything noticing.
 void main() {
   String read(String path) => File(path).readAsStringSync();
 
@@ -55,6 +55,34 @@ void main() {
       fromPodspec,
       fromSwift,
       reason: 'CocoaPods and SPM would install different Khipu clients',
+    );
+  });
+
+  test('both iOS packaging files pin the same deployment target', () {
+    final String? fromPodspec = firstMatch(
+      read('ios/flutter_khipu.podspec'),
+      r"s\.platform\s*=\s*:ios,\s*'([^']+)'",
+    );
+    final String? fromSwift = firstMatch(
+      read('ios/flutter_khipu/Package.swift'),
+      r'\.iOS\("([^"]+)"\)',
+    );
+
+    expect(
+      fromPodspec,
+      isNotNull,
+      reason: 'could not read s.platform from the podspec',
+    );
+    expect(
+      fromSwift,
+      isNotNull,
+      reason: 'could not read the iOS platform from Package.swift',
+    );
+    expect(
+      fromPodspec,
+      fromSwift,
+      reason: 'CocoaPods and SPM would require different iOS deployment '
+          'targets',
     );
   });
 }

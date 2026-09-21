@@ -2,22 +2,11 @@ import Flutter
 import UIKit
 import KhipuClientIOS
 
-public class FlutterKhipuPlugin: NSObject, FlutterPlugin {
+public class FlutterKhipuPlugin: NSObject, FlutterPlugin, KhipuHostApi {
   public static func register(with registrar: FlutterPluginRegistrar) {
-    let channel = FlutterMethodChannel(name: "flutter_khipu", binaryMessenger: registrar.messenger())
     let instance = FlutterKhipuPlugin()
-    registrar.addMethodCallDelegate(instance, channel: channel)
+    KhipuHostApiSetup.setUp(binaryMessenger: registrar.messenger(), api: instance)
   }
-
-  public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
-    switch call.method {
-    case "startOperation":
-        startOperation(call, result: result)
-    default:
-        result(FlutterMethodNotImplemented)
-    }
-  }
-
 
     /// The view controller Khipu should be presented from.
     ///
@@ -45,119 +34,64 @@ public class FlutterKhipuPlugin: NSObject, FlutterPlugin {
         return controller
     }
 
-    /// Verdadero mientras Khipu está presentado.
+    /// True while Khipu is presented.
     ///
-    /// Sin esto, una segunda llamada presentaría Khipu **encima de Khipu**:
-    /// `presenter()` camina hasta el controlador presentado más alto, que en ese
-    /// momento es el propio Khipu. Dos pagos apilados sobre la misma operación.
+    /// Without this, a second call would present Khipu **on top of Khipu**:
+    /// `presenter()` walks up to the highest presented controller, which at
+    /// that point is Khipu itself. Two payments stacked on the same operation.
     private var operationInFlight = false
 
-    private func startOperation(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+    func startOperation(options: KhipuStartOperationOptions) async throws -> KhipuResult? {
         if operationInFlight {
-            result(FlutterError(code: "OPERATION_IN_PROGRESS",
-                                message: "A Khipu operation is already running",
-                                details: nil))
-            return
+            throw PigeonError(code: "OPERATION_IN_PROGRESS",
+                              message: "A Khipu operation is already running",
+                              details: nil)
         }
 
         guard let rootViewController = FlutterKhipuPlugin.presenter() else {
-            result(FlutterError(code: "NO_VIEW_CONTROLLER", message: "A view controller is needed to start Khipu", details: nil))
-            return
+            throw PigeonError(code: "NO_VIEW_CONTROLLER",
+                              message: "A view controller is needed to start Khipu",
+                              details: nil)
         }
 
-        guard let args = call.arguments as? Dictionary<String, Any> else {
-            result(FlutterError(code: "BAD_ARGUMENT_DICTIONARY", message: "The arguments parameter is not a Dictionary<String, Any>", details: nil))
-            return
-        }
+        // SDK types are always named with their module. KhipuClientIOS
+        // exports KhipuColors, KhipuResult and KhipuEvent as public, and the
+        // ones Pigeon generates land in this same module: unqualified,
+        // Swift picks the generated one and the error it gives does not
+        // mention shadowing.
+        var optionsBuilder = KhipuClientIOS.KhipuOptions.Builder()
 
-        guard let operationId = args["operationId"] as? String else {
-            result(FlutterError(code: "MISSING_OPERATION_ID", message: "There is no operationId argument", details: nil))
-            return
-        }
+        if let title = options.title { optionsBuilder = optionsBuilder.topBarTitle(title) }
+        if let url = options.titleImageUrl { optionsBuilder = optionsBuilder.topBarImageUrl(url) }
+        if let locale = options.locale { optionsBuilder = optionsBuilder.locale(locale) }
+        if let v = options.skipExitPage { optionsBuilder = optionsBuilder.skipExitPage(v) }
+        if let v = options.skipExitSuccessPage { optionsBuilder = optionsBuilder.skipExitSuccessPage(v) }
+        if let v = options.showFooter { optionsBuilder = optionsBuilder.showFooter(v) }
+        if let v = options.showMerchantLogo { optionsBuilder = optionsBuilder.showMerchantLogo(v) }
+        if let v = options.showPaymentDetails { optionsBuilder = optionsBuilder.showPaymentDetails(v) }
 
-        var optionsBuilder = KhipuOptions.Builder()
-
-        if (args["title"] is String) {
-            optionsBuilder = optionsBuilder.topBarTitle(args["title"]! as! String)
-        }
-
-        if (args["titleImageUrl"] is String) {
-            optionsBuilder = optionsBuilder.topBarImageUrl(args["titleImageUrl"]! as! String)
-        }
-
-        if (args["skipExitPage"] is Bool) {
-            optionsBuilder = optionsBuilder.skipExitPage(args["skipExitPage"]! as! Bool)
-        }
-
-        if (args["skipExitSuccessPage"] is Bool) {
-            optionsBuilder = optionsBuilder.skipExitSuccessPage(args["skipExitSuccessPage"]! as! Bool)
-        }
-
-        if (args["showFooter"] is Bool) {
-            optionsBuilder = optionsBuilder.showFooter(args["showFooter"]! as! Bool)
-        }
-
-        if (args["showMerchantLogo"] is Bool) {
-            optionsBuilder = optionsBuilder.showMerchantLogo(args["showMerchantLogo"]! as! Bool)
-        }
-
-        if (args["showPaymentDetails"] is Bool) {
-            optionsBuilder = optionsBuilder.showPaymentDetails(args["showPaymentDetails"]! as! Bool)
-        }
-
-        if (args["locale"] is String) {
-            optionsBuilder = optionsBuilder.locale(args["locale"]! as! String)
-        }
-
-        if (args["theme"] is String) {
-            let theme = args["theme"]! as! String
-            if(theme == "light") {
-                optionsBuilder = optionsBuilder.theme(.light)
-            } else if (theme == "dark") {
-                optionsBuilder = optionsBuilder.theme(.dark)
-            } else if (theme == "system") {
-                optionsBuilder = optionsBuilder.theme(.system)
+        if let theme = options.theme {
+            switch theme {
+            case .light: optionsBuilder = optionsBuilder.theme(.light)
+            case .dark: optionsBuilder = optionsBuilder.theme(.dark)
+            case .system: optionsBuilder = optionsBuilder.theme(.system)
             }
         }
 
-        var colorsBuilder = KhipuColors.Builder()
+        var colorsBuilder = KhipuClientIOS.KhipuColors.Builder()
 
-        if (args["lightBackground"] is String) {
-            colorsBuilder = colorsBuilder.lightBackground(args["lightBackground"]! as! String)
-        }
-        if (args["lightOnBackground"] is String) {
-            colorsBuilder = colorsBuilder.lightOnBackground(args["lightOnBackground"]! as! String)
-        }
-        if (args["lightPrimary"] is String) {
-            colorsBuilder = colorsBuilder.lightPrimary(args["lightPrimary"]! as! String)
-        }
-        if (args["lightOnPrimary"] is String) {
-            colorsBuilder = colorsBuilder.lightOnPrimary(args["lightOnPrimary"]! as! String)
-        }
-        if (args["lightTopBarContainer"] is String) {
-            colorsBuilder = colorsBuilder.lightTopBarContainer(args["lightTopBarContainer"]! as! String)
-        }
-        if (args["lightOnTopBarContainer"] is String) {
-            colorsBuilder = colorsBuilder.lightOnTopBarContainer(args["lightOnTopBarContainer"]! as! String)
-        }
-        if (args["darkBackground"] is String) {
-            colorsBuilder = colorsBuilder.darkBackground(args["darkBackground"]! as! String)
-        }
-        if (args["darkOnBackground"] is String) {
-            colorsBuilder = colorsBuilder.darkOnBackground(args["darkOnBackground"]! as! String)
-        }
-        if (args["darkPrimary"] is String) {
-            colorsBuilder = colorsBuilder.darkPrimary(args["darkPrimary"]! as! String)
-        }
-        if (args["darkOnPrimary"] is String) {
-            colorsBuilder = colorsBuilder.darkOnPrimary(args["darkOnPrimary"]! as! String)
-        }
-        if (args["darkTopBarContainer"] is String) {
-            colorsBuilder = colorsBuilder.darkTopBarContainer(args["darkTopBarContainer"]! as! String)
-        }
-        if (args["darkOnTopBarContainer"] is String) {
-            colorsBuilder = colorsBuilder.darkOnTopBarContainer(args["darkOnTopBarContainer"]! as! String)
-        }
+        if let v = options.colors?.lightBackground { colorsBuilder = colorsBuilder.lightBackground(v) }
+        if let v = options.colors?.lightOnBackground { colorsBuilder = colorsBuilder.lightOnBackground(v) }
+        if let v = options.colors?.lightPrimary { colorsBuilder = colorsBuilder.lightPrimary(v) }
+        if let v = options.colors?.lightOnPrimary { colorsBuilder = colorsBuilder.lightOnPrimary(v) }
+        if let v = options.colors?.lightTopBarContainer { colorsBuilder = colorsBuilder.lightTopBarContainer(v) }
+        if let v = options.colors?.lightOnTopBarContainer { colorsBuilder = colorsBuilder.lightOnTopBarContainer(v) }
+        if let v = options.colors?.darkBackground { colorsBuilder = colorsBuilder.darkBackground(v) }
+        if let v = options.colors?.darkOnBackground { colorsBuilder = colorsBuilder.darkOnBackground(v) }
+        if let v = options.colors?.darkPrimary { colorsBuilder = colorsBuilder.darkPrimary(v) }
+        if let v = options.colors?.darkOnPrimary { colorsBuilder = colorsBuilder.darkOnPrimary(v) }
+        if let v = options.colors?.darkTopBarContainer { colorsBuilder = colorsBuilder.darkTopBarContainer(v) }
+        if let v = options.colors?.darkOnTopBarContainer { colorsBuilder = colorsBuilder.darkOnTopBarContainer(v) }
 
         optionsBuilder = optionsBuilder.colors(colorsBuilder.build())
 
@@ -172,39 +106,66 @@ public class FlutterKhipuPlugin: NSObject, FlutterPlugin {
         // add-to-app, or a `FlutterEngineGroup`) each get their own `FlutterKhipuPlugin`
         // instance and can still present Khipu on top of Khipu.
         operationInFlight = true
-        DispatchQueue.main.async {
-            KhipuLauncher.launch(presenter: rootViewController,
-                                 operationId: operationId,
-                                 options: optionsBuilder.build()) { [weak self] khipuResult in
-                // Released only here, by the SDK's completion closure. That is safe because
-                // in KhipuClientIOS 2.17.1 every SDK-driven exit reaches this closure — the
-                // close button, every terminal message, and even a terminal message the SDK
-                // cannot parse — and the view is presented `.overFullScreen`, so there is no
-                // interactive-dismiss (swipe-to-dismiss) path around it. The residual hole is
-                // the *host app* dismissing Khipu's view controller itself, bypassing the
-                // SDK; that would leave `operationInFlight` stuck `true` and this plugin
-                // rejecting every later call with `OPERATION_IN_PROGRESS` for the life of the
-                // process.
-                self?.operationInFlight = false
-                result([
-                    "operationId": khipuResult.operationId,
-                    "result": khipuResult.result,
-                    "exitTitle": khipuResult.exitTitle,
-                    "exitMessage": khipuResult.exitMessage,
-                    "exitUrl": khipuResult.exitUrl as Any,
-                    "failureReason": khipuResult.failureReason as Any,
-                    "continueUrl": khipuResult.continueUrl as Any,
-                    "events": khipuResult.events.map({ event in
-                        return [
-                            "name": event.name,
-                            "type": event.type,
-                            "timestamp": event.timestamp
-                        ]
-                    })
-                ])
+        return try await withCheckedThrowingContinuation { continuation in
+            DispatchQueue.main.async {
+                KhipuClientIOS.KhipuLauncher.launch(presenter: rootViewController,
+                                                    operationId: options.operationId,
+                                                    options: optionsBuilder.build()) { [weak self] khipuResult in
+                    // Released only here, by the SDK's completion closure. That is safe because
+                    // in KhipuClientIOS 2.17.1 every SDK-driven exit reaches this closure — the
+                    // close button, every terminal message, and even a terminal message the SDK
+                    // cannot parse — and the view is presented `.overFullScreen`, so there is no
+                    // interactive-dismiss (swipe-to-dismiss) path around it. The residual hole is
+                    // the *host app* dismissing Khipu's view controller itself, bypassing the
+                    // SDK; that would leave `operationInFlight` stuck `true` and this plugin
+                    // rejecting every later call with `OPERATION_IN_PROGRESS` for the life of the
+                    // process.
+                    //
+                    // The continuation is resumed exactly once here: the SDK's closure runs a
+                    // single time per operation, and there is no other `resume` on any other
+                    // path in this block. Resuming twice is a Swift crash; never resuming leaves
+                    // the merchant's Dart `Future` hanging forever — the same defect Cycle 1
+                    // closed on Android.
+                    self?.operationInFlight = false
+                    continuation.resume(returning: KhipuResult(
+                        operationId: khipuResult.operationId,
+                        result: Self.statusOf(khipuResult.result),
+                        rawResult: khipuResult.result,
+                        exitTitle: khipuResult.exitTitle,
+                        exitMessage: khipuResult.exitMessage,
+                        events: khipuResult.events.map { event in
+                            KhipuEvent(name: event.name,
+                                       type: event.type,
+                                       timestamp: event.timestamp)
+                        },
+                        exitUrl: khipuResult.exitUrl,
+                        failureReason: khipuResult.failureReason,
+                        continueUrl: khipuResult.continueUrl
+                    ))
+                }
             }
+        }
+    }
 
-
+    /// Translates the SDK's free text into the channel's enum.
+    ///
+    /// The five values are the ones the native client emits; `.unknown` is
+    /// what makes a new value from the server reach the merchant instead of
+    /// breaking the whole message. It has to match `statusOf` in
+    /// FlutterKhipuPlugin.kt: they are the same contract written twice.
+    ///
+    /// `internal` (the default), not `private`, so RunnerTests can reach it
+    /// through `@testable import` — otherwise this mapping would be the one
+    /// half of the "same contract written twice" that has no test on this
+    /// platform.
+    static func statusOf(_ raw: String) -> KhipuResultStatus {
+        switch raw {
+        case "OK": return .ok
+        case "ERROR": return .error
+        case "WARNING": return .warning
+        case "CONTINUE": return .mustContinue
+        case "USER_CANCELED": return .userCanceled
+        default: return .unknown
         }
     }
 }

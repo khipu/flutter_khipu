@@ -1,3 +1,34 @@
+# 2.0.0
+
+**Read the "Migrating from 1.x" section of the README before upgrading.** The Dart API is now
+typed. `theme` and `result` are enums instead of strings — a typo in `theme` used to be silently
+ignored, now it does not compile. Five `KhipuResult` fields (`operationId`, `result`, `exitTitle`,
+`exitMessage`, `events`) are no longer nullable, because they never were null in practice: 1.7.1
+widened every field to fix a crash and widened past what the native SDKs actually send. `events`
+is a fixed `List`, not a lazily-decoded `Iterable`, and it is unmodifiable. Every type is
+`@immutable`, with `const` constructors and `==`/`hashCode`/`toString`. `KhipuResultStatus` adds an
+`unknown` case, so a status value the plugin does not recognize yet — a new one the server starts
+sending — degrades into a value you can branch on instead of breaking the message.
+
+Two `PlatformException` codes are gone: `MISSING_OPERATION_ID` and `BAD_ARGUMENT_DICTIONARY`. Both
+described a malformed call across the channel, and a malformed call is no longer something a
+handler can receive. That is this release's real mechanism, and it is why the change is a major
+version rather than a rewrite of the same shape: the method channel's wire format used to be
+whatever `MethodCall.arguments` a Dart map happened to produce, matched by hand against whatever
+keys the Kotlin and Swift sides read out of it — a contract three languages agreed to by
+convention, not by anything the compiler checked. It is now generated from a single Pigeon schema
+(`pigeons/khipu_api.dart`) on all three sides, encoded as a positional list instead of a keyed map.
+There are no string keys left to drift between Dart and native, so the class of bug Cycle 1 watched
+for with a test that diffed key names by regex is no longer a bug this plugin can have — the test
+was deleted along with the failure mode it caught, not because coverage moved elsewhere.
+
+`plugin_platform_interface` is gone along with `flutter_khipu_platform_interface.dart` and
+`flutter_khipu_method_channel.dart`. `package:flutter_khipu/flutter_khipu.dart` is the only import
+now; it always was for anyone not extending the platform interface directly.
+
+Neither native client pin moves: this release changes how the channel between Dart and each
+native SDK is generated, not which SDK versions it talks to.
+
 # 1.9.0
 
 Carries everything in 1.7.2 onto the current line, and adds what the maintenance line

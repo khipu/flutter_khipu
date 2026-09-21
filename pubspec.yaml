@@ -1,6 +1,6 @@
 name: flutter_khipu
 description: "Flutter plugin for Khipu, this plugin enables a flutter app to use Khipu to authorize payments."
-version: 1.9.0
+version: 2.0.0
 homepage: "https://github.com/khipu/flutter_khipu"
 repository: "https://github.com/khipu/flutter_khipu"
 issue_tracker: "https://github.com/khipu/flutter_khipu/issues"
@@ -13,12 +13,16 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  plugin_platform_interface: ^2.0.2
+  meta: ^1.15.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  # Exact, not ^: the enum case names it generates and the shape of the code
+  # change between versions, and 29.0.2 is what the §7.1 spike measured
+  # against both iOS packaging paths.
+  pigeon: 29.0.2
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

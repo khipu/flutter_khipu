@@ -1,57 +1,60 @@
 package com.khipu.flutter_khipu
 
-import com.khipu.client.KhipuColors
 import com.khipu.client.KhipuOptions
-import io.flutter.plugin.common.MethodCall
+import com.khipu.client.KhipuColors as SdkKhipuColors
 
 /**
- * Traduce el mapa plano que llega por el method channel a las opciones del SDK.
+ * Translates the typed options that arrive over the Pigeon channel into the
+ * SDK's own options.
  *
- * Las claves son el contrato con el lado Dart: cada nombre de acá aparece
- * literal en `lib/flutter_khipu_method_channel.dart`, y `test/method_channel_seam_test.dart`
- * compara los dos conjuntos. Renombrar una clave sin tocar el otro lado
- * desactiva esa opción en silencio.
+ * The Pigeon schema (`pigeons/khipu_api.dart`) is now the contract for every
+ * field name and type here: there is no separate flat map of string keys to
+ * keep in sync by hand any more, and no regex-based test watching this
+ * function's assignment style either — that job now belongs to the generated
+ * code and its own schema test (`test/pigeon_schema_test.dart`).
  */
-internal fun buildKhipuOptions(call: MethodCall): KhipuOptions {
+internal fun buildKhipuOptions(options: KhipuStartOperationOptions): KhipuOptions {
     val builder = KhipuOptions.Builder()
 
-    call.argument<String>("title")?.let { builder.topBarTitle = it }
-    call.argument<String>("titleImageUrl")?.let { builder.topBarImageUrl = it }
-    call.argument<String>("locale")?.let { builder.locale = it }
-    call.argument<Boolean>("skipExitPage")?.let { builder.skipExitPage = it }
-    call.argument<Boolean>("skipExitSuccessPage")?.let { builder.skipExitSuccessPage = it }
-    call.argument<Boolean>("showFooter")?.let { builder.showFooter = it }
-    call.argument<Boolean>("showMerchantLogo")?.let { builder.showMerchantLogo = it }
-    call.argument<Boolean>("showPaymentDetails")?.let { builder.showPaymentDetails = it }
+    options.title?.let { builder.topBarTitle(it) }
+    options.titleImageUrl?.let { builder.topBarImageUrl(it) }
+    options.locale?.let { builder.locale(it) }
+    options.skipExitPage?.let { builder.skipExitPage(it) }
+    options.skipExitSuccessPage?.let { builder.skipExitSuccessPage(it) }
+    options.showFooter?.let { builder.showFooter(it) }
+    options.showMerchantLogo?.let { builder.showMerchantLogo(it) }
+    options.showPaymentDetails?.let { builder.showPaymentDetails(it) }
+    options.theme?.let { builder.theme(it.toSdk()) }
+    options.colors?.let { builder.colors(it.toSdk()) }
 
-    call.argument<String>("theme")?.let {
-        when (it) {
-            "light" -> builder.theme = KhipuOptions.Theme.LIGHT
-            "dark" -> builder.theme = KhipuOptions.Theme.DARK
-            "system" -> builder.theme = KhipuOptions.Theme.SYSTEM
-            // Un valor desconocido se ignora: el SDK aplica su propio default.
-        }
-    }
-
-    builder.colors = buildKhipuColors(call)
     return builder.build()
 }
 
-private fun buildKhipuColors(call: MethodCall): KhipuColors {
-    val builder = KhipuColors.Builder()
+/**
+ * The `when` deliberately has no `else`: adding a theme to the schema has to
+ * fail to compile here, not fail silently at runtime.
+ */
+internal fun KhipuTheme.toSdk(): KhipuOptions.Theme = when (this) {
+    KhipuTheme.LIGHT -> KhipuOptions.Theme.LIGHT
+    KhipuTheme.DARK -> KhipuOptions.Theme.DARK
+    KhipuTheme.SYSTEM -> KhipuOptions.Theme.SYSTEM
+}
 
-    call.argument<String>("lightBackground")?.let { builder.lightBackground = it }
-    call.argument<String>("lightOnBackground")?.let { builder.lightOnBackground = it }
-    call.argument<String>("lightPrimary")?.let { builder.lightPrimary = it }
-    call.argument<String>("lightOnPrimary")?.let { builder.lightOnPrimary = it }
-    call.argument<String>("lightTopBarContainer")?.let { builder.lightTopBarContainer = it }
-    call.argument<String>("lightOnTopBarContainer")?.let { builder.lightOnTopBarContainer = it }
-    call.argument<String>("darkBackground")?.let { builder.darkBackground = it }
-    call.argument<String>("darkOnBackground")?.let { builder.darkOnBackground = it }
-    call.argument<String>("darkPrimary")?.let { builder.darkPrimary = it }
-    call.argument<String>("darkOnPrimary")?.let { builder.darkOnPrimary = it }
-    call.argument<String>("darkTopBarContainer")?.let { builder.darkTopBarContainer = it }
-    call.argument<String>("darkOnTopBarContainer")?.let { builder.darkOnTopBarContainer = it }
+private fun KhipuColors.toSdk(): SdkKhipuColors {
+    val b = SdkKhipuColors.Builder()
 
-    return builder.build()
+    lightBackground?.let { b.lightBackground(it) }
+    lightOnBackground?.let { b.lightOnBackground(it) }
+    lightPrimary?.let { b.lightPrimary(it) }
+    lightOnPrimary?.let { b.lightOnPrimary(it) }
+    lightTopBarContainer?.let { b.lightTopBarContainer(it) }
+    lightOnTopBarContainer?.let { b.lightOnTopBarContainer(it) }
+    darkBackground?.let { b.darkBackground(it) }
+    darkOnBackground?.let { b.darkOnBackground(it) }
+    darkPrimary?.let { b.darkPrimary(it) }
+    darkOnPrimary?.let { b.darkOnPrimary(it) }
+    darkTopBarContainer?.let { b.darkTopBarContainer(it) }
+    darkOnTopBarContainer?.let { b.darkOnTopBarContainer(it) }
+
+    return b.build()
 }
