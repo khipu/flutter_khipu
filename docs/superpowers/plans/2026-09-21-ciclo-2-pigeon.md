@@ -1464,28 +1464,37 @@ public class FlutterKhipuPlugin: NSObject, FlutterPlugin, KhipuHostApi {
 
 Borrar `handle(_:result:)` entero.
 
-Cambiar la firma de `startOperation` a la del HostApi generado, y cambiar cada `result(FlutterError(...))` por `completion(.failure(PigeonError(code:message:details:)))`. El nombre exacto del tipo de error lo da el generado: leelo en `Messages.g.swift` antes de escribirlo.
+Cambiar la firma de `startOperation` a la del HostApi generado. **Ojo con la forma: Pigeon 29.0.2 con `@async` NO genera un completion handler, genera `async throws`.** Medido en el generado (`Messages.g.swift:583-585`):
 
 ```swift
-    func startOperation(
-        options: KhipuStartOperationOptions,
-        completion: @escaping (Result<KhipuResult?, Error>) -> Void
-    ) {
+protocol KhipuHostApi {
+  func startOperation(options: KhipuStartOperationOptions) async throws -> KhipuResult?
+}
+```
+
+Kotlin hace lo mismo (`suspend fun`), y la Tarea 3 ya lo resolvió con `suspendCancellableCoroutine`. Acá el equivalente es `withCheckedThrowingContinuation`, porque `KhipuLauncher.launch` sigue siendo callback.
+
+Así que los errores se **lanzan**, no se pasan a un completion:
+
+```swift
+    func startOperation(options: KhipuStartOperationOptions) async throws -> KhipuResult? {
         if operationInFlight {
-            completion(.failure(PigeonError(code: "OPERATION_IN_PROGRESS",
-                                            message: "A Khipu operation is already running",
-                                            details: nil)))
-            return
+            throw PigeonError(code: "OPERATION_IN_PROGRESS",
+                              message: "A Khipu operation is already running",
+                              details: nil)
         }
 
         guard let rootViewController = FlutterKhipuPlugin.presenter() else {
-            completion(.failure(PigeonError(code: "NO_VIEW_CONTROLLER",
-                                            message: "A view controller is needed to start Khipu",
-                                            details: nil)))
-            return
+            throw PigeonError(code: "NO_VIEW_CONTROLLER",
+                              message: "A view controller is needed to start Khipu",
+                              details: nil)
         }
         ...
 ```
+
+**La continuación se reanuda exactamente una vez.** Reanudarla dos veces es un crash de Swift, y no reanudarla nunca deja el `Future` del comercio colgado para siempre — que es justo el defecto que el Ciclo 1 cerró en Android. El `operationInFlight` se libera en el mismo lugar donde hoy se libera, dentro del closure del SDK, y sigue teniendo que setearse **antes** del salto a la cola principal.
+
+Confirmá el nombre exacto del tipo de error contra `Messages.g.swift` antes de escribirlo: en Kotlin es `FlutterError` y en Swift `PigeonError`.
 
 Los guards `BAD_ARGUMENT_DICTIONARY` y `MISSING_OPERATION_ID` **se borran**: el codec de Pigeon rechaza un mensaje malformado antes de llegar acá, y `operationId` es no nulo en el esquema. Anotalo para el README de la Tarea 6: los dos códigos desaparecen de la API 2.0.0.
 
@@ -1516,27 +1525,40 @@ El bloque de colores hace lo mismo con `options.colors?.lightBackground` y sus o
 
 - [ ] **Step 4: Convertir el resultado, con el mismo mapeo de estado que Android**
 
-Dentro del closure del launcher, reemplazar el diccionario por el tipo generado:
+El launcher del SDK sigue siendo callback, así que el puente es `withCheckedThrowingContinuation`. Dentro del closure, reemplazar el diccionario por el tipo generado y reanudar la continuación:
 
 ```swift
-                self?.operationInFlight = false
-                completion(.success(KhipuResult(
-                    operationId: khipuResult.operationId,
-                    result: Self.statusOf(khipuResult.result),
-                    exitTitle: khipuResult.exitTitle,
-                    exitMessage: khipuResult.exitMessage,
-                    events: khipuResult.events.map { event in
-                        KhipuEvent(name: event.name,
-                                   type: event.type,
-                                   timestamp: event.timestamp)
-                    },
-                    exitUrl: khipuResult.exitUrl,
-                    failureReason: khipuResult.failureReason,
-                    continueUrl: khipuResult.continueUrl
-                )))
+        operationInFlight = true
+        return try await withCheckedThrowingContinuation { continuation in
+            DispatchQueue.main.async {
+                KhipuClientIOS.KhipuLauncher.launch(presenter: rootViewController,
+                                                    operationId: options.operationId,
+                                                    options: optionsBuilder.build()) { [weak self] khipuResult in
+                    self?.operationInFlight = false
+                    continuation.resume(returning: KhipuResult(
+                        operationId: khipuResult.operationId,
+                        result: Self.statusOf(khipuResult.result),
+                        exitTitle: khipuResult.exitTitle,
+                        exitMessage: khipuResult.exitMessage,
+                        events: khipuResult.events.map { event in
+                            KhipuEvent(name: event.name,
+                                       type: event.type,
+                                       timestamp: event.timestamp)
+                        },
+                        exitUrl: khipuResult.exitUrl,
+                        failureReason: khipuResult.failureReason,
+                        continueUrl: khipuResult.continueUrl
+                    ))
+                }
+            }
+        }
 ```
 
-El orden de los parámetros lo fija el generado; copialo de `Messages.g.swift`.
+`operationInFlight = true` queda **fuera** del `withCheckedThrowingContinuation` y antes del `DispatchQueue.main.async`, igual que hoy: es lo que hace que dos llamadas rápidas no pasen las dos la guarda. Moverlo adentro parece un refactor inocente y reabre la carrera.
+
+El orden de los parámetros de `KhipuResult` lo fija el generado —es un `struct` con memberwise init sintetizado— y el de arriba es el orden real medido; confirmalo igual en `Messages.g.swift`.
+
+**La continuación se reanuda exactamente una vez.** El closure del SDK corre una sola vez por operación, así que el camino normal está cubierto; lo que hay que cuidar es no agregar un segundo `resume` en un camino de error dentro del closure.
 
 Y el mapeo, que tiene que dar exactamente lo mismo que el `statusOf` de Kotlin:
 
