@@ -2,11 +2,10 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// El podspec y el Package.swift tienen que declarar la misma versión de
-/// KhipuClientIOS, y el podspec la misma versión que el pubspec. También
-/// tienen que declarar el mismo piso de iOS. Son archivos que nadie compara,
-/// y el podspec se quedó en 0.0.1 durante ocho releases sin que nada lo
-/// notara.
+/// The podspec and Package.swift have to declare the same KhipuClientIOS
+/// version, and the podspec the same version as the pubspec. They also have
+/// to declare the same iOS floor. These are files nobody compares, and the
+/// podspec stayed at 0.0.1 for eight releases without anything noticing.
 void main() {
   String read(String path) => File(path).readAsStringSync();
 
