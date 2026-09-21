@@ -1,3 +1,21 @@
+# 2.0.1
+
+Documentation only: no code changes, no behaviour changes. Two claims in 2.0.0's README were
+wrong in the way that hurts most — they compile.
+
+**Abandoning a payment does not report `KhipuResultStatus.userCanceled`.** It arrives as
+`KhipuResultStatus.error` with `failureReason` set to `"USER_CANCELED"`. 2.0.0's README said
+otherwise, so a merchant branching on `userCanceled` would compile cleanly and never match. The
+enum case stays — the native SDK defines the constant — but it is now documented as reserved,
+both in the README and in the doc comment your IDE shows. Measured on device on Android and iOS,
+and confirmed against the Android SDK's bytecode.
+
+**On that same path `exitUrl` arrives as an empty string, not `null`.** A `!= null` check passes
+and opens nothing. Checking `isNotEmpty` is the fix; a completed payment does carry a real URL,
+which is why the empty case is easy to miss.
+
+Neither native client pin moves: `khipu-client-android 2.28.5`, `KhipuClientIOS 2.17.1`.
+
 # 2.0.0
 
 **Read the "Migrating from 1.x" section of the README before upgrading.** The Dart API is now

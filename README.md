@@ -391,15 +391,48 @@ practice you always get a `KhipuResult`, whose fields are:
 ## Cancellation
 
 When the payer abandons the payment — by backing out, which opens Khipu's own confirmation
-dialog, or by using its close button — the result arrives as a normal `KhipuResult` with `result`
-set to `KhipuResultStatus.userCanceled`. `exitTitle` and `exitMessage` carry Khipu's own localized
-wording for the abandonment, so you can show them as-is.
+dialog, or by using its close button — the operation ends with `result` set to
+`KhipuResultStatus.error` and `failureReason` set to `"USER_CANCELED"`. `exitTitle` and
+`exitMessage` carry Khipu's own localized wording for the abandonment, so you can show them
+as-is.
+
+**Abandonment is not a `result` of its own — branch on `failureReason`:**
+
+```dart
+if (result.result == KhipuResultStatus.error &&
+    result.failureReason == 'USER_CANCELED') {
+  // The payer walked away. Not a failure worth alarming them about.
+}
+```
+
+`KhipuResultStatus.userCanceled` exists because the native SDK defines that constant, but the
+abandonment path does not emit it as `result`. Measured on device on both platforms and confirmed
+against the Android SDK's bytecode, where the cancellation branch loads `USER_CANCELED` into
+`failureReason` and `ERROR` into `result`. Treat the enum case as reserved: branching on it alone
+silently never matches.
+
+On this path `exitUrl` arrives as an **empty string**, not `null` — measured on both platforms,
+while `continueUrl` on the same result is genuinely `null`. So a nullable field being non-null is
+not enough to conclude there is a URL to open:
+
+```dart
+// Wrong: an empty string is not null, so this opens nothing.
+if (result.exitUrl != null) { open(result.exitUrl!); }
+
+// Right:
+final String? url = result.exitUrl;
+if (url != null && url.isNotEmpty) { open(url); }
+```
+
+On a completed payment `exitUrl` does carry a real URL, which is what makes the empty case easy to
+miss: it only shows up when the payer walks away.
 
 Two uncommon paths differ. If Android tore the payment down and the payer returns more than three
-minutes later, the SDK ends the operation with the same `result` but with the exit strings empty.
-And if the SDK cannot parse the message that ended the operation, it returns
-`result: KhipuResultStatus.error` with `failureReason` **null** — it does not know why the payment
-failed, and says so rather than guessing.
+minutes later, the SDK ends the operation the same way but with the exit strings empty. And if the
+SDK cannot parse the message that ended the operation, it returns `result:
+KhipuResultStatus.error` with `failureReason` **null** — it does not know why the payment failed,
+and says so rather than guessing. So `failureReason` distinguishes the three: `"USER_CANCELED"`
+for abandonment, `null` for an unparseable ending, and anything else for a real failure.
 
 ## Errors
 

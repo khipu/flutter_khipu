@@ -28,6 +28,13 @@ enum KhipuResultStatus {
   /// The SDK emits this as `CONTINUE`. It's named differently because
   /// `continue` is a reserved word in Dart, Kotlin, and Swift.
   mustContinue,
+
+  /// Reserved: the abandonment path does NOT report this.
+  ///
+  /// The native SDK defines the constant, so it is kept here, but a payer who
+  /// walks away arrives as [error] with `failureReason` set to
+  /// `"USER_CANCELED"` — measured on `khipu-client-android 2.28.5`. Branching
+  /// on this case alone silently never matches; branch on `failureReason`.
   userCanceled,
   unknown,
 }
