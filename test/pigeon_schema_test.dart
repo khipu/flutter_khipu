@@ -2,22 +2,22 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// El esquema de Pigeon es la única fuente de la forma del canal, y hay dos
-/// propiedades suyas que ningún test de comportamiento puede defender.
+/// The Pigeon schema is the single source of the channel's shape, and two
+/// of its properties are ones no behavior test can defend.
 ///
-/// La primera es la codificación del vacío que fijó el PR #18. Pigeon
-/// serializa una lista posicional, no un mapa, así que no hay clave que
-/// omitir: el requisito se cumple por construcción en cuanto los tres campos
-/// sean nullable. Lo único que podría romperlo es que alguien los vuelva
-/// obligatorios en el esquema, y eso es lo que este test mira.
+/// The first is the empty-value encoding that PR #18 pinned. Pigeon
+/// serializes a positional list, not a map, so there's no key to omit: the
+/// requirement holds by construction as long as the three fields stay
+/// nullable. The only thing that could break it is someone making them
+/// required in the schema, and that's what this test watches.
 ///
-/// La segunda es el caso `unknown` de KhipuResultStatus. Quitarlo no rompe
-/// ninguna prueba: rompe en producción, el día que el servidor emita un valor
-/// nuevo.
+/// The second is the `unknown` case of KhipuResultStatus. Removing it
+/// breaks no test: it breaks in production, the day the server emits a new
+/// value.
 void main() {
   final String schema = File('pigeons/khipu_api.dart').readAsStringSync();
 
-  test('los tres campos opcionales de KhipuResult siguen siendo nullable', () {
+  test('the three optional fields of KhipuResult stay nullable', () {
     for (final String field in <String>[
       'exitUrl',
       'failureReason',
@@ -26,27 +26,28 @@ void main() {
       expect(
         schema,
         contains('String? $field;'),
-        reason: 'El PR #18 fijó que los tres opcionales viajan siempre. Con '
-            'Pigeon eso se cumple con que sean nullable: $field dejó de serlo.',
+        reason: 'PR #18 pinned that the three optional fields always '
+            'travel. With Pigeon that holds by staying nullable: $field '
+            'stopped being one.',
       );
     }
   });
 
-  test('KhipuResultStatus conserva el caso unknown', () {
+  test('KhipuResultStatus keeps the unknown case', () {
     expect(schema, contains('enum KhipuResultStatus'));
     expect(
       schema,
       contains('unknown,'),
-      reason: 'Sin unknown, un valor nuevo del servidor rompe la '
-          'decodificación del mensaje entero.',
+      reason: 'Without unknown, a new value from the server breaks '
+          'decoding of the entire message.',
     );
   });
 
-  test('los cinco valores que el SDK puede emitir están cubiertos', () {
-    // Medidos sobre el bytecode de KhipuActivityKt en khipu-client-android
-    // 2.28.5: OK, ERROR, WARNING, CONTINUE, USER_CANCELED. `mustContinue`
-    // es CONTINUE renombrado, porque `continue` es reservada en los tres
-    // lenguajes que Pigeon genera.
+  test('the five values the SDK can emit are covered', () {
+    // Measured against the bytecode of KhipuActivityKt in
+    // khipu-client-android 2.28.5: OK, ERROR, WARNING, CONTINUE,
+    // USER_CANCELED. `mustContinue` is CONTINUE renamed, because `continue`
+    // is reserved in the three languages Pigeon generates.
     for (final String c in <String>[
       'ok,',
       'error,',

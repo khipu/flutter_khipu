@@ -184,32 +184,33 @@ private func nilOrValue<T>(_ value: Any?) -> T? {
 }
 
 
-/// Tema con el que Khipu se presenta.
+/// Theme Khipu presents itself with.
 enum KhipuTheme: Int, CaseIterable {
   case light = 0
   case dark = 1
   case system = 2
 }
 
-/// Desenlace de la operación.
+/// Outcome of the operation.
 ///
-/// El SDK lo entrega como texto libre. Los cinco primeros casos son los que
-/// `khipu-client-android` 2.28.5 puede emitir, medidos sobre su bytecode;
-/// [unknown] existe para que un valor nuevo del servidor no rompa el canal.
-/// Sin él, un valor no reconocido haría fallar la decodificación entera del
-/// mensaje y el pago llegaría al comercio como un error de plataforma.
+/// The SDK delivers it as free text. The first five cases are the ones
+/// `khipu-client-android` 2.28.5 can emit, measured against its bytecode;
+/// [unknown] exists so a new value from the server doesn't break the
+/// channel. Without it, an unrecognized value would fail decoding of the
+/// entire message, and the payment would reach the merchant as a platform
+/// error.
 enum KhipuResultStatus: Int, CaseIterable {
   case ok = 0
   case error = 1
   case warning = 2
-  /// El SDK lo emite como `CONTINUE`. Se llama distinto porque `continue` es
-  /// palabra reservada en Dart, en Kotlin y en Swift.
+  /// The SDK emits this as `CONTINUE`. It's named differently because
+  /// `continue` is a reserved word in Dart, Kotlin, and Swift.
   case mustContinue = 3
   case userCanceled = 4
   case unknown = 5
 }
 
-/// Paleta con la que se pinta Khipu. Un color nulo deja el del SDK.
+/// Palette Khipu is painted with. A null color leaves the SDK's own.
 ///
 /// Generated class from Pigeon that represents data sent in messages.
 struct KhipuColors: Hashable, CustomStringConvertible {
@@ -386,8 +387,9 @@ struct KhipuStartOperationOptions: Hashable, CustomStringConvertible {
   }
 }
 
-/// Los tres campos son no nulos: medido sobre el AAR 2.28.5, el constructor
-/// de `com.khipu.client.KhipuEvent` hace `checkNotNullParameter` en los tres.
+/// All three fields are non-null: measured against the 2.28.5 AAR, the
+/// `com.khipu.client.KhipuEvent` constructor does `checkNotNullParameter` on
+/// all three.
 ///
 /// Generated class from Pigeon that represents data sent in messages.
 struct KhipuEvent: Hashable, CustomStringConvertible {
@@ -434,8 +436,8 @@ struct KhipuEvent: Hashable, CustomStringConvertible {
   }
 }
 
-/// Nulabilidad según §2.3 del design doc: los tres opcionales son exactamente
-/// los que el SDK Android declara `@Nullable`.
+/// Nullability per §2.3 of the design doc: the three optional fields are
+/// exactly the ones the Android SDK declares `@Nullable`.
 ///
 /// Generated class from Pigeon that represents data sent in messages.
 struct KhipuResult: Hashable, CustomStringConvertible {
