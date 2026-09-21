@@ -75,20 +75,34 @@ void main() {
         const KhipuStartOperationOptions(
           operationId: 'abc123',
           title: 'Mi comercio',
+          titleImageUrl: 'https://example.com/logo.png',
           locale: 'es_CL',
           skipExitPage: true,
+          skipExitSuccessPage: false,
+          showFooter: true,
+          showMerchantLogo: false,
+          showPaymentDetails: true,
           theme: KhipuTheme.dark,
         ),
       );
 
       expect(seen.operationId, 'abc123');
       expect(seen.title, 'Mi comercio');
+      expect(seen.titleImageUrl, 'https://example.com/logo.png');
       expect(seen.locale, 'es_CL');
+      // Alternating true/false so an adjacent-field swap among the five
+      // booleans changes the outcome instead of passing by coincidence.
       expect(seen.skipExitPage, isTrue);
+      expect(seen.skipExitSuccessPage, isFalse);
+      expect(seen.showFooter, isTrue);
+      expect(seen.showMerchantLogo, isFalse);
+      expect(seen.showPaymentDetails, isTrue);
       expect(seen.theme, pigeon.KhipuTheme.dark);
     });
 
     test('sends the palette nested, not twelve loose keys', () async {
+      // Each field gets its own name as its value, so a field swapped with
+      // its neighbour fails with a message naming exactly which one.
       late pigeon.KhipuStartOperationOptions seen;
       mockHost((pigeon.KhipuStartOperationOptions o) {
         seen = o;
@@ -99,16 +113,45 @@ void main() {
         const KhipuStartOperationOptions(
           operationId: 'abc123',
           colors: KhipuColors(
-            lightPrimary: '#8347AD',
-            darkPrimary: '#3CB4E5',
+            lightBackground: 'lightBackground',
+            lightOnBackground: 'lightOnBackground',
+            lightPrimary: 'lightPrimary',
+            lightOnPrimary: 'lightOnPrimary',
+            lightTopBarContainer: 'lightTopBarContainer',
+            lightOnTopBarContainer: 'lightOnTopBarContainer',
+            darkBackground: 'darkBackground',
+            darkOnBackground: 'darkOnBackground',
+            darkPrimary: 'darkPrimary',
+            darkOnPrimary: 'darkOnPrimary',
+            darkTopBarContainer: 'darkTopBarContainer',
+            darkOnTopBarContainer: 'darkOnTopBarContainer',
           ),
         ),
       );
 
       expect(seen.colors, isNotNull);
-      expect(seen.colors!.lightPrimary, '#8347AD');
-      expect(seen.colors!.darkPrimary, '#3CB4E5');
-      expect(seen.colors!.lightBackground, isNull);
+      final pigeon.KhipuColors colors = seen.colors!;
+      final Map<String, String?> sentByField = <String, String?>{
+        'lightBackground': colors.lightBackground,
+        'lightOnBackground': colors.lightOnBackground,
+        'lightPrimary': colors.lightPrimary,
+        'lightOnPrimary': colors.lightOnPrimary,
+        'lightTopBarContainer': colors.lightTopBarContainer,
+        'lightOnTopBarContainer': colors.lightOnTopBarContainer,
+        'darkBackground': colors.darkBackground,
+        'darkOnBackground': colors.darkOnBackground,
+        'darkPrimary': colors.darkPrimary,
+        'darkOnPrimary': colors.darkOnPrimary,
+        'darkTopBarContainer': colors.darkTopBarContainer,
+        'darkOnTopBarContainer': colors.darkOnTopBarContainer,
+      };
+      for (final MapEntry<String, String?> field in sentByField.entries) {
+        expect(
+          field.value,
+          field.key,
+          reason: '${field.key} is mismapped on the wire',
+        );
+      }
     });
 
     test('leaves the palette null when none was given', () async {
@@ -128,7 +171,40 @@ void main() {
 
   group('result', () {
     test('maps a complete result', () async {
-      mockHost((_) => nativeResult());
+      // exitUrl, failureReason and continueUrl used to travel together —
+      // exitUrl set, the other two always null — so a swap among the three
+      // went undetected. Cover both the all-null shape and one where all
+      // three carry distinct values.
+      mockHost((_) => nativeResult(exitUrl: null));
+
+      final KhipuResult? withoutOptionals = await khipu.startOperation(
+        const KhipuStartOperationOptions(operationId: 'abc123'),
+      );
+
+      expect(withoutOptionals, isNotNull);
+      expect(withoutOptionals!.exitUrl, isNull);
+      expect(withoutOptionals.failureReason, isNull);
+      expect(withoutOptionals.continueUrl, isNull);
+
+      mockHost(
+        (_) => nativeResult(
+          exitUrl: 'https://khipu.com/done',
+          failureReason: 'INSUFFICIENT_FUNDS',
+          continueUrl: 'https://khipu.com/continue',
+          events: <pigeon.KhipuEvent>[
+            pigeon.KhipuEvent(
+              name: 'start',
+              type: 'info',
+              timestamp: '2026-09-21T10:00:00Z',
+            ),
+            pigeon.KhipuEvent(
+              name: 'authorized',
+              type: 'success',
+              timestamp: '2026-09-21T10:01:00Z',
+            ),
+          ],
+        ),
+      );
 
       final KhipuResult? r = await khipu.startOperation(
         const KhipuStartOperationOptions(operationId: 'abc123'),
@@ -139,10 +215,18 @@ void main() {
       expect(r.result, KhipuResultStatus.ok);
       expect(r.exitTitle, 'Listo');
       expect(r.exitUrl, 'https://khipu.com/done');
-      expect(r.failureReason, isNull);
-      expect(r.continueUrl, isNull);
-      expect(r.events, hasLength(1));
-      expect(r.events.single.name, 'start');
+      expect(r.failureReason, 'INSUFFICIENT_FUNDS');
+      expect(r.continueUrl, 'https://khipu.com/continue');
+
+      // Two events with distinct fields, checked by index: a single-element
+      // list can't reveal whether order is preserved.
+      expect(r.events, hasLength(2));
+      expect(r.events[0].name, 'start');
+      expect(r.events[0].type, 'info');
+      expect(r.events[0].timestamp, '2026-09-21T10:00:00Z');
+      expect(r.events[1].name, 'authorized');
+      expect(r.events[1].type, 'success');
+      expect(r.events[1].timestamp, '2026-09-21T10:01:00Z');
     });
 
     test('events is its own list, not a view over the message', () async {
