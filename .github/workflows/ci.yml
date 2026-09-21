@@ -21,6 +21,16 @@ jobs:
       - run: flutter pub get
         working-directory: example
       - run: flutter analyze
+      - name: Generated code is up to date
+        # Un esquema editado sin regenerar deja los tres lados hablando formas
+        # distintas, y nada más en el CI lo ve: los tests de Dart corren contra
+        # el generado viejo y pasan.
+        run: |
+          dart run pigeon --input pigeons/khipu_api.dart
+          if ! git diff --exit-code --stat; then
+            echo "::error::el código generado no coincide con pigeons/khipu_api.dart; corré 'dart run pigeon --input pigeons/khipu_api.dart' y commiteá"
+            exit 1
+          fi
       - run: flutter test
       - name: Publish dry run
         run: dart pub publish --dry-run
