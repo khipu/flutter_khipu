@@ -1185,9 +1185,10 @@ Borrar `onMethodCall` entero y reemplazar `startOperation` por la firma del Host
             return callback(failure("OPERATION_IN_PROGRESS", "A Khipu operation is already running"))
         }
 
-        // operationId ya no puede faltar: el esquema lo declara no nulo y el
-        // codec rechaza el mensaje antes de llegar acá. MISSING_OPERATION_ID
-        // se conserva sólo por si el canal se invoca desde fuera del plugin.
+        // MISSING_OPERATION_ID desaparece: el esquema declara operationId no
+        // nulo y el codec rechaza el mensaje antes de llegar acá, así que el
+        // guard era inalcanzable. iOS lo pierde por lo mismo (Tarea 4), y el
+        // README de la Tarea 6 baja la tabla de nueve códigos a siete.
         val intent = try {
             intentFactory(activity.baseContext, options.operationId, buildKhipuOptions(options))
         } catch (e: Exception) {
@@ -1661,6 +1662,14 @@ En `ios/flutter_khipu.podspec`:
   s.platform = :ios, '15.0'
 ```
 
+Y en `pubspec.yaml`, **en esta tarea y no en la 6**:
+
+```yaml
+version: 2.0.0
+```
+
+Van juntos a propósito: `test/package_metadata_test.dart` compara las dos versiones, así que subir una sola deja el test rojo hasta que la otra la alcance, y ninguna tarea puede cerrar con un test rojo.
+
 En `example/ios/Podfile`, dentro del `post_install`, **después** de `flutter_additional_ios_build_settings(target)`:
 
 ```ruby
@@ -1676,10 +1685,10 @@ Y en `example/ios/Runner.xcodeproj/project.pbxproj`, reemplazar todas las aparic
 
 - [ ] **Step 6: Verificar que el test de metadatos sigue cubriendo**
 
-`test/package_metadata_test.dart` compara la versión del podspec contra el pubspec. Con `2.0.0` en los dos, tiene que pasar.
+`test/package_metadata_test.dart` compara la versión del podspec contra el pubspec, y el pin de `KhipuClientIOS` entre el podspec y `Package.swift`. Con `2.0.0` en los dos primeros y `2.17.1` sin tocar en los otros, tiene que pasar.
 
 Run: `flutter test test/package_metadata_test.dart`
-Expected: PASS. Si falla, es que el pubspec todavía dice `1.9.0`; se sube en la Tarea 6.
+Expected: PASS. Si falla por versión, es que el Step 5 subió sólo uno de los dos archivos.
 
 - [ ] **Step 7: Recompilar los dos empaquetados**
 
@@ -1721,12 +1730,12 @@ flutter_additional_ios_build_settings puts 13.0 back on every pod install."
 - Consumes: todo lo anterior.
 - Produces: el paquete listo para publicar.
 
-- [ ] **Step 1: Subir la versión**
+- [ ] **Step 1: Confirmar que la versión ya está en 2.0.0**
 
-En `pubspec.yaml`: `version: 2.0.0`.
+El bump vive en la Tarea 5, junto al del podspec, porque `test/package_metadata_test.dart` compara los dos y ninguna tarea puede cerrar con un test rojo. Acá sólo se verifica.
 
-Run: `flutter test test/package_metadata_test.dart`
-Expected: PASS — ahora el podspec (Tarea 5) y el pubspec coinciden.
+Run: `grep '^version:' pubspec.yaml && flutter test test/package_metadata_test.dart`
+Expected: `version: 2.0.0` y el test en verde. Si dice `1.9.0`, la Tarea 5 quedó a medias: subilo acá y decilo en el reporte.
 
 - [ ] **Step 2: Escribir la guía de migración en el README**
 
