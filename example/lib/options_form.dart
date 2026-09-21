@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_khipu/flutter_khipu.dart';
 
 import 'demo_settings.dart';
 
@@ -166,13 +167,16 @@ class _OptionsFormState extends State<OptionsForm> {
           children: <Widget>[
             _label(context, 'theme'),
             const SizedBox(height: 8),
-            SegmentedButton<String>(
-              segments: <ButtonSegment<String>>[
-                for (final String theme in KhipuDemoSettings.themes)
-                  ButtonSegment<String>(value: theme, label: Text(theme)),
+            SegmentedButton<KhipuTheme>(
+              segments: <ButtonSegment<KhipuTheme>>[
+                for (final KhipuTheme theme in KhipuDemoSettings.themes)
+                  ButtonSegment<KhipuTheme>(
+                    value: theme,
+                    label: Text(theme.name),
+                  ),
               ],
-              selected: <String>{settings.theme},
-              onSelectionChanged: (Set<String> selection) {
+              selected: <KhipuTheme>{settings.theme},
+              onSelectionChanged: (Set<KhipuTheme> selection) {
                 setState(() => settings.theme = selection.first);
                 widget.onChanged();
               },

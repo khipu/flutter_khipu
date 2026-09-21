@@ -54,12 +54,11 @@ class ResultCard extends StatelessWidget {
       ];
     }
 
-    final Iterable<KhipuEvent> events =
-        current.events ?? const <KhipuEvent>[];
+    final List<KhipuEvent> events = current.events;
 
     return <Widget>[
       _Row(label: 'operationId', value: current.operationId),
-      _Row(label: 'result', value: current.result),
+      _Row(label: 'result', value: current.result.name),
       _Row(label: 'exitTitle', value: current.exitTitle),
       _Row(label: 'exitMessage', value: current.exitMessage),
       _Row(label: 'exitUrl', value: current.exitUrl),

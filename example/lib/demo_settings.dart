@@ -55,7 +55,11 @@ class KhipuDemoSettings {
     },
   };
 
-  static const List<String> themes = <String>['system', 'light', 'dark'];
+  static const List<KhipuTheme> themes = <KhipuTheme>[
+    KhipuTheme.system,
+    KhipuTheme.light,
+    KhipuTheme.dark,
+  ];
 
   static const List<String> locales = <String>['es_CL', 'en_US'];
 
@@ -67,7 +71,7 @@ class KhipuDemoSettings {
   bool showFooter = true;
   bool showMerchantLogo = true;
   bool showPaymentDetails = true;
-  String theme = 'system';
+  KhipuTheme theme = KhipuTheme.system;
   String locale = 'es_CL';
 
   /// Colour overrides keyed by [colorFieldNames].

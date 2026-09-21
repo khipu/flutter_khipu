@@ -27,14 +27,14 @@ void main() {
       final settings = KhipuDemoSettings()
         ..operationId = 'abc123'
         ..title = 'Mi comercio'
-        ..theme = 'dark'
+        ..theme = KhipuTheme.dark
         ..locale = 'en_US';
 
       final options = settings.toOptions();
 
       expect(options.operationId, 'abc123');
       expect(options.title, 'Mi comercio');
-      expect(options.theme, 'dark');
+      expect(options.theme, KhipuTheme.dark);
       expect(options.locale, 'en_US');
     });
 
