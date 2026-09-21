@@ -28,9 +28,8 @@ class FlutterKhipu {
   /// one.
   ///
   /// Throws [PlatformException] if the operation failed to open. The
-  /// possible codes are documented in the README; two of them —
-  /// `OPERATION_IN_PROGRESS` and `MISSING_OPERATION_ID`— exist on both
-  /// platforms, and the rest only on one.
+  /// possible codes are documented in the README. Only `OPERATION_IN_PROGRESS`
+  /// exists on both platforms; the rest are platform-specific.
   Future<KhipuResult?> startOperation(
     KhipuStartOperationOptions options,
   ) async {
