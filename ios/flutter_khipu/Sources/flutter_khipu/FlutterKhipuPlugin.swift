@@ -149,10 +149,13 @@ public class FlutterKhipuPlugin: NSObject, FlutterPlugin, KhipuHostApi {
 
     /// Translates the SDK's free text into the channel's enum.
     ///
-    /// The five values are the ones the native client emits; `.unknown` is
-    /// what makes a new value from the server reach the merchant instead of
-    /// breaking the whole message. It has to match `statusOf` in
-    /// FlutterKhipuPlugin.kt: they are the same contract written twice.
+    /// The four values mirror the protocol's four terminal messages one to
+    /// one. Abandonment is not among them: it arrives as `.error` with
+    /// `failureReason` `"USER_CANCELED"`, which is why there is no branch for
+    /// it here. `.unknown` is what makes a new value from the server reach the
+    /// merchant instead of breaking the whole message. It has to match
+    /// `statusOf` in FlutterKhipuPlugin.kt: they are the same contract
+    /// written twice.
     ///
     /// `internal` (the default), not `private`, so RunnerTests can reach it
     /// through `@testable import` — otherwise this mapping would be the one
@@ -164,7 +167,6 @@ public class FlutterKhipuPlugin: NSObject, FlutterPlugin, KhipuHostApi {
         case "ERROR": return .error
         case "WARNING": return .warning
         case "CONTINUE": return .mustContinue
-        case "USER_CANCELED": return .userCanceled
         default: return .unknown
         }
     }

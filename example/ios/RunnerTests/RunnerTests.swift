@@ -17,15 +17,22 @@ import XCTest
 
 class RunnerTests: XCTestCase {
 
-  func testStatusOfMapsTheFiveKnownValues() {
-    // The five values khipu-client-android 2.28.5 can emit, measured on its
-    // bytecode (§ FlutterKhipuPlugin.kt); the native iOS client emits the
-    // same five.
+  func testStatusOfMapsTheFourKnownValues() {
+    // One per terminal message of the protocol, measured on the bytecode of
+    // khipu-client-android 2.28.5 (§ FlutterKhipuPlugin.kt); the native iOS
+    // client emits the same four.
     XCTAssertEqual(FlutterKhipuPlugin.statusOf("OK"), .ok)
     XCTAssertEqual(FlutterKhipuPlugin.statusOf("ERROR"), .error)
     XCTAssertEqual(FlutterKhipuPlugin.statusOf("WARNING"), .warning)
     XCTAssertEqual(FlutterKhipuPlugin.statusOf("CONTINUE"), .mustContinue)
-    XCTAssertEqual(FlutterKhipuPlugin.statusOf("USER_CANCELED"), .userCanceled)
+  }
+
+  func testUserCanceledIsNotAResultAndIsNotMappedAsOne() {
+    // Abandonment arrives as .error with failureReason "USER_CANCELED". 2.0.0
+    // mapped USER_CANCELED to a status of its own, which no path could
+    // produce. If it ever did reach this function it is an unrecognised value
+    // like any other, and degrading is the right answer.
+    XCTAssertEqual(FlutterKhipuPlugin.statusOf("USER_CANCELED"), .unknown)
   }
 
   func testStatusOfDegradesAnUnknownValueInsteadOfCrashing() {

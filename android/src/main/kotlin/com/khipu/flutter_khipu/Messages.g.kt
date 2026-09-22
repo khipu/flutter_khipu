@@ -214,8 +214,14 @@ enum class KhipuTheme(val raw: Int) {
 /**
  * Outcome of the operation.
  *
- * The SDK delivers it as free text. The first five cases are the ones
- * `khipu-client-android` 2.28.5 can emit, measured against its bytecode;
+ * The SDK delivers it as free text. The first four cases mirror the
+ * protocol's four terminal messages one to one — `OPERATION_SUCCESS`,
+ * `OPERATION_FAILURE`, `OPERATION_WARNING` and `OPERATION_MUST_CONTINUE` —
+ * measured against `khipu-client-android` 2.28.5's bytecode.
+ *
+ * Abandoning a payment is NOT one of them: it arrives as [error] with
+ * `failureReason` set to `"USER_CANCELED"`. There is no cancelled outcome.
+ *
  * [unknown] exists so a new value from the server doesn't break the
  * channel. Without it, an unrecognized value would fail decoding of the
  * entire message, and the payment would reach the merchant as a platform
@@ -230,16 +236,7 @@ enum class KhipuResultStatus(val raw: Int) {
    * `continue` is a reserved word in Dart, Kotlin, and Swift.
    */
   MUST_CONTINUE(3),
-  /**
-   * Reserved: the abandonment path does NOT report this.
-   *
-   * The native SDK defines the constant, so it is kept here, but a payer who
-   * walks away arrives as [error] with `failureReason` set to
-   * `"USER_CANCELED"` — measured on `khipu-client-android 2.28.5`. Branching
-   * on this case alone silently never matches; branch on `failureReason`.
-   */
-  USER_CANCELED(4),
-  UNKNOWN(5);
+  UNKNOWN(4);
 
   companion object {
     fun ofRaw(raw: Int): KhipuResultStatus? {

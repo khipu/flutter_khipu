@@ -185,17 +185,19 @@ class FlutterKhipuPlugin : FlutterPlugin, KhipuHostApi,
         /**
          * Translates the SDK's free text into the channel's enum.
          *
-         * The five values are the ones khipu-client-android 2.28.5 can
-         * emit, measured on the bytecode of KhipuActivityKt. UNKNOWN is what
-         * makes a new value from the server reach the merchant instead of
-         * breaking the whole message.
+         * The four values mirror the protocol's four terminal messages one
+         * to one, measured on the bytecode of KhipuActivityKt in
+         * khipu-client-android 2.28.5. Abandonment is not among them: it
+         * arrives as ERROR with failureReason USER_CANCELED, which is why
+         * there is no branch for it here. UNKNOWN is what makes a new value
+         * from the server reach the merchant instead of breaking the whole
+         * message.
          */
         internal fun statusOf(raw: String?): KhipuResultStatus = when (raw) {
             "OK" -> KhipuResultStatus.OK
             "ERROR" -> KhipuResultStatus.ERROR
             "WARNING" -> KhipuResultStatus.WARNING
             "CONTINUE" -> KhipuResultStatus.MUST_CONTINUE
-            "USER_CANCELED" -> KhipuResultStatus.USER_CANCELED
             else -> KhipuResultStatus.UNKNOWN
         }
     }
