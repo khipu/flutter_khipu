@@ -43,19 +43,31 @@ void main() {
     );
   });
 
-  test('the five values the SDK can emit are covered', () {
+  test('the four values the SDK can emit are covered, and no more', () {
     // Measured against the bytecode of KhipuActivityKt in
-    // khipu-client-android 2.28.5: OK, ERROR, WARNING, CONTINUE,
-    // USER_CANCELED. `mustContinue` is CONTINUE renamed, because `continue`
-    // is reserved in the three languages Pigeon generates.
+    // khipu-client-android 2.28.5: the protocol has four terminal messages
+    // and `result` carries one string per message — OK, ERROR, WARNING and
+    // CONTINUE. `mustContinue` is CONTINUE renamed, because `continue` is
+    // reserved in the three languages Pigeon generates.
     for (final String c in <String>[
       'ok,',
       'error,',
       'warning,',
       'mustContinue,',
-      'userCanceled,',
     ]) {
       expect(schema, contains(c));
     }
+
+    // Abandonment is NOT a result: it arrives as ERROR with failureReason
+    // USER_CANCELED. 2.0.0 shipped a `userCanceled` case that no path could
+    // ever produce, because the bytecode reading counted the literals in the
+    // cancellation branch without noticing USER_CANCELED sat next to ERROR in
+    // the same constructor — so it was the other field. Guarding against it
+    // coming back.
+    expect(
+      schema,
+      isNot(contains('userCanceled')),
+      reason: 'the SDK never reports cancellation through `result`',
+    );
   });
 }

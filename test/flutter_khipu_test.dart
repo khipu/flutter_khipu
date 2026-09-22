@@ -318,14 +318,13 @@ void main() {
       expect(r, isNull);
     });
 
-    test('the five SDK statuses cross the channel, with their raw text', () async {
+    test('the four SDK statuses cross the channel, with their raw text', () async {
       for (final (pigeon.KhipuResultStatus, String) pair
           in <(pigeon.KhipuResultStatus, String)>[
         (pigeon.KhipuResultStatus.ok, 'OK'),
         (pigeon.KhipuResultStatus.error, 'ERROR'),
         (pigeon.KhipuResultStatus.warning, 'WARNING'),
         (pigeon.KhipuResultStatus.mustContinue, 'CONTINUE'),
-        (pigeon.KhipuResultStatus.userCanceled, 'USER_CANCELED'),
       ]) {
         final (pigeon.KhipuResultStatus s, String raw) = pair;
         mockHost((_) => nativeResult(result: s, rawResult: raw));
@@ -387,14 +386,14 @@ void main() {
     test('toString names the status', () {
       const KhipuResult a = KhipuResult(
         operationId: 'abc123',
-        result: KhipuResultStatus.userCanceled,
-        rawResult: 'USER_CANCELED',
+        result: KhipuResultStatus.error,
+        rawResult: 'ERROR',
         exitTitle: 'Cancelado',
         exitMessage: 'La persona salió',
         events: <KhipuEvent>[],
       );
 
-      expect(a.toString(), contains('userCanceled'));
+      expect(a.toString(), contains('error'));
     });
   });
 }

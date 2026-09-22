@@ -206,6 +206,29 @@ authorization fails at the banks that ask for the check.
 Khipu's own documentation is the canonical source for this behaviour; this section
 describes what the plugin's pinned client does today.
 
+## Migrating from 2.0.x
+
+One breaking change, and it only touches code that cannot work today.
+
+`KhipuResultStatus.userCanceled` is gone. It never described anything: `result` carries one value
+per terminal message of the protocol, and abandonment is not one of them — a payer who walks away
+arrives as `error` with `failureReason` set to `"USER_CANCELED"`, which is what 1.x did too and
+what the SDK has always done.
+
+It only breaks two shapes of code, and both are already broken:
+
+```dart
+// A branch that never ran — it stops compiling, which is the point.
+if (result.result == KhipuResultStatus.userCanceled) { … }
+
+// An exhaustive switch — remove the arm; it was unreachable.
+switch (result.result) {
+  case KhipuResultStatus.userCanceled: …
+}
+```
+
+If you branch on `failureReason` — the way [Cancellation](#cancellation) shows — nothing changes.
+
 ## Migrating from 1.x
 
 Eight breaking changes. Most integrations only hit the first two.
@@ -231,9 +254,12 @@ if (result?.result == 'OK') { … }
 if (result?.result == KhipuResultStatus.ok) { … }
 ```
 
-The cases are `ok`, `error`, `warning`, `mustContinue`, `userCanceled` and
-`unknown`. `mustContinue` is the value the SDK sends as `CONTINUE`; it is
-spelled differently because `continue` is a reserved word.
+The cases are `ok`, `error`, `warning`, `mustContinue` and `unknown`. The first four mirror the
+protocol's four terminal messages one to one. `mustContinue` is the value the SDK sends as
+`CONTINUE`; it is spelled differently because `continue` is a reserved word.
+
+**There is no cancelled case, and that is not an oversight.** A payer who walks away arrives as
+`error` with `failureReason` set to `"USER_CANCELED"` — see [Cancellation](#cancellation).
 
 **Handle `unknown`.** It is what you get if the server starts sending a
 result this plugin does not know yet. In 1.x that value reached you as a raw
@@ -374,7 +400,6 @@ practice you always get a `KhipuResult`, whose fields are:
   - `warning` : Warning
   - `mustContinue` : The operation needs more steps. The SDK sends this as `CONTINUE`; it is
     spelled differently here because `continue` is a reserved word in Dart, Kotlin and Swift.
-  - `userCanceled` : The payer abandoned the payment.
   - `unknown` : The server sent a status this version of the plugin does not know yet. Handle
     it explicitly — treating it as a failure is usually right, but it is your call.
 - `rawResult` : `String`. What the SDK actually sent for `result`, before it was matched against
@@ -405,11 +430,14 @@ if (result.result == KhipuResultStatus.error &&
 }
 ```
 
-`KhipuResultStatus.userCanceled` exists because the native SDK defines that constant, but the
-abandonment path does not emit it as `result`. Measured on device on both platforms and confirmed
-against the Android SDK's bytecode, where the cancellation branch loads `USER_CANCELED` into
-`failureReason` and `ERROR` into `result`. Treat the enum case as reserved: branching on it alone
-silently never matches.
+There is no `KhipuResultStatus` case for cancellation, because the SDK has no such outcome:
+`result` carries one value per terminal message of the protocol, and abandonment is not one of
+them. Measured on device on both platforms and confirmed against the Android SDK's bytecode, where
+the cancellation branch loads `USER_CANCELED` into `failureReason` and `ERROR` into `result`.
+
+(2.0.x did ship a `userCanceled` case. It was a misreading on our side — the bytecode's
+cancellation branch holds both strings, and we took the wrong one for `result`. No path could ever
+produce it, so it was removed in 3.0.0.)
 
 On this path `exitUrl` arrives as an **empty string**, not `null` — measured on both platforms,
 while `continueUrl` on the same result is genuinely `null`. So a nullable field being non-null is

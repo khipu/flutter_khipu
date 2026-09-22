@@ -1,3 +1,28 @@
+# 3.0.0
+
+Removes `KhipuResultStatus.userCanceled`, which never described anything the SDK can produce.
+
+**What happened.** 2.0.0 typed `result` as an enum, and the enum was built by reading the native
+SDK's bytecode. The cancellation branch there holds two strings — `USER_CANCELED` and `ERROR` —
+and we took the wrong one for `result`. `USER_CANCELED` is the `failureReason`; `ERROR` is the
+result. So 2.0.x shipped a case that no code path could ever produce.
+
+`result` carries exactly one value per terminal message of the protocol: `OPERATION_SUCCESS` →
+`ok`, `OPERATION_FAILURE` → `error`, `OPERATION_WARNING` → `warning`, `OPERATION_MUST_CONTINUE` →
+`mustContinue`. Plus `unknown`, which is ours and exists so a new server value degrades instead of
+failing the whole message decode. Abandonment is not a terminal message; it is `error` with
+`failureReason` `"USER_CANCELED"`, which is what 1.x did and what the SDK has always done.
+
+**What breaks.** Only code that cannot work today: a branch on `userCanceled` that never ran, or
+an exhaustive `switch` with an unreachable arm. If you branch on `failureReason`, nothing changes.
+
+**Why a major for a case nobody can receive.** Because the set of values of a public enum is part
+of the contract, and a merchant reading it to learn what can happen to a payment counted five
+outcomes when there are four.
+
+Neither native client pin moves: `khipu-client-android 2.28.5`, `KhipuClientIOS 2.17.1`. No
+behaviour changes on either platform.
+
 # 2.0.2
 
 Documentation only, again: no code changes, no behaviour changes.

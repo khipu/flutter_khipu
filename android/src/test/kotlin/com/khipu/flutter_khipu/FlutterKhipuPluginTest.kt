@@ -371,14 +371,21 @@ class FlutterKhipuPluginTest {
 
     @Test
     fun `maps every status the SDK can emit`() {
-        // The five values measured on the bytecode of KhipuActivityKt in
-        // khipu-client-android 2.28.5, plus the case that guards against a
-        // new value from the server.
+        // One per terminal message of the protocol, measured on the bytecode
+        // of KhipuActivityKt in khipu-client-android 2.28.5.
         assertEquals(KhipuResultStatus.OK, FlutterKhipuPlugin.statusOf("OK"))
         assertEquals(KhipuResultStatus.ERROR, FlutterKhipuPlugin.statusOf("ERROR"))
         assertEquals(KhipuResultStatus.WARNING, FlutterKhipuPlugin.statusOf("WARNING"))
         assertEquals(KhipuResultStatus.MUST_CONTINUE, FlutterKhipuPlugin.statusOf("CONTINUE"))
-        assertEquals(KhipuResultStatus.USER_CANCELED, FlutterKhipuPlugin.statusOf("USER_CANCELED"))
+    }
+
+    @Test
+    fun `USER_CANCELED is not a result, and is not mapped as one`() {
+        // Abandonment arrives as ERROR with failureReason USER_CANCELED. 2.0.0
+        // mapped USER_CANCELED to a status of its own, which no path could
+        // produce. If it ever did reach this function it is an unrecognised
+        // value like any other, and degrading is the right answer.
+        assertEquals(KhipuResultStatus.UNKNOWN, FlutterKhipuPlugin.statusOf("USER_CANCELED"))
     }
 
     @Test
