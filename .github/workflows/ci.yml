@@ -93,7 +93,15 @@ jobs:
         working-directory: example/android
 
   ios:
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/')
+    # Runs on pull requests too, despite costing ~8 minutes of a macOS runner.
+    # This cycle rewrote the whole Swift side and three separate PRs reached the
+    # merge button without this job ever touching them — the Swift itself, and
+    # two shared actions. Each had to be dispatched by hand, which only works
+    # when somebody remembers.
+    #
+    # Not filtered by path on purpose: the Pigeon schema generates the Swift, so
+    # a change under pigeons/ breaks iOS without touching ios/.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request' || startsWith(github.ref, 'refs/tags/')
     runs-on: macos-latest
     timeout-minutes: 90
     steps:
