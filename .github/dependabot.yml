@@ -1,0 +1,55 @@
+version: 2
+
+# What this does NOT cover, which is most of what matters here.
+#
+# The two dependencies that move this plugin's behaviour are the native Khipu
+# clients, and Dependabot reaches neither:
+#
+#   - `com.khipu:khipu-client-android` lives in Khipu's private Nexus, which
+#     Dependabot cannot resolve.
+#   - `KhipuClientIOS` is pinned exactly on both iOS packaging paths, on purpose:
+#     the plugin release is the version gate, not the resolver. A bump has to
+#     move the podspec and Package.swift together and cut a release, which is
+#     more than a dependency PR can do.
+#
+# So a green Dependabot here does not mean the native clients are current. That
+# is checked by hand against the Nexus metadata and the KhipuClientIOS tags.
+#
+# Gradle is left out for the same kind of reason: AGP and KGP come from the
+# Flutter template and are tied to the Flutter version the plugin supports.
+# Raising them independently breaks the compatibility this package promises.
+
+updates:
+  # The published package. `pigeon` is pinned exactly rather than with a caret:
+  # its codegen changes shape between versions — 29.x generates `suspend fun`
+  # for @async where an earlier reading expected a callback — so a bump means
+  # regenerating and checking the three generated files, not just merging.
+  - package-ecosystem: pub
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: chore
+
+  # The example app. It resolves the plugin by path, so it only surfaces drift
+  # in the app's own dependencies.
+  - package-ecosystem: pub
+    directory: /example
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: chore
+
+  # CI actions. These pin to major tags (actions/checkout@v4), so this mostly
+  # catches a major that stops receiving fixes.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: ci
