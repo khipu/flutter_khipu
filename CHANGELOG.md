@@ -1,3 +1,25 @@
+# 1.7.3
+
+Documentation only: no code changes, no behaviour changes.
+
+**Xcode 27 needs iOS 15.0.** It refuses to build any target below iOS 15.0, and Flutter's app
+template sets 13.0, so an app fails before this plugin is involved. The README now says what fixes
+it on each packaging path: the Runner target at 15.0 always, and with CocoaPods also a
+`post_install` that forces 15.0 on every pod. The `platform` line alone is not enough, because
+Flutter's `flutter_additional_ios_build_settings` skips every pod that does not depend on Flutter,
+and that leaves Khipu's native SDK and its dependencies at the 12.0 their podspecs declare.
+Measured with Xcode 27.0, Flutter 3.41.9 and 1.7.2.
+
+On this line there is one more catch, and it is Flutter's: with Flutter 3.41.9 and Xcode 27,
+simulator builds fail inside Flutter's own framework step (`Failed to copy Flutter framework`),
+even for an app with no plugins. Device builds work.
+
+**The Android repository snippet is Kotlin DSL first.** `flutter create` generates
+`android/build.gradle.kts`, where the Groovy `maven { url '...' }` shown until now does not
+compile. The Groovy form stays for projects that still use it, written as `url = '...'`.
+
+Neither native client pin moves: `khipu-client-android 2.28.5`, `KhipuClientIOS 2.17.1`.
+
 # 1.7.2
 
 **Read this before upgrading: the payment behaves differently on iOS.** Until now, a payer who
