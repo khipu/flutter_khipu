@@ -20,9 +20,10 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^6.0.0
   # Exact, not ^: the enum case names it generates and the shape of the code
-  # change between versions, and 29.0.2 is what the §7.1 spike measured
-  # against both iOS packaging paths.
-  pigeon: 29.0.2
+  # change between versions. 29.0.2 is what the §7.1 spike measured against
+  # both iOS packaging paths; 29.0.4 regenerates the same three files except
+  # for the version in their header.
+  pigeon: 29.0.4
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
