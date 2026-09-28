@@ -49,8 +49,32 @@ flutter pub get
 
 ### iOS
 
-This plugin requires **iOS 13.0 or later**. Make sure your app's deployment target is at least
-`13.0`, both in the Xcode project and in `ios/Podfile` if you have one.
+This plugin supports **iOS 13.0 or later**, but **Xcode 27 refuses to build any target below
+iOS 15.0** — and Flutter's app template sets 13.0, so an app with no plugins at all fails the
+same way. If you build with Xcode 27, raise your app to 15.0:
+
+- **The Runner target, always.** In Xcode, select the Runner target and set *Minimum
+  Deployments* to 15.0, or replace every `IPHONEOS_DEPLOYMENT_TARGET = 13.0;` with `15.0;` in
+  `ios/Runner.xcodeproj/project.pbxproj`. With Swift Package Manager, that is all it takes.
+- **With CocoaPods, every pod as well.** CocoaPods writes each pod's own deployment target into
+  its build settings, and neither the `platform` line nor Flutter's
+  `flutter_additional_ios_build_settings` raises it: Flutter skips every pod that does not depend
+  on Flutter, which leaves Khipu's native SDK and its dependencies at 12.0, and this plugin's own
+  pod stays at 13.0. Set `platform :ios, '15.0'` in `ios/Podfile` and force every pod in its
+  `post_install`:
+
+  ```ruby
+  post_install do |installer|
+    installer.pods_project.targets.each do |target|
+      flutter_additional_ios_build_settings(target)
+      target.build_configurations.each do |config|
+        config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
+      end
+    end
+  end
+  ```
+
+  With the Runner at 15.0 but without this override, a CocoaPods build still fails.
 
 The plugin ships support for both **Swift Package Manager** and **CocoaPods**, so no extra setup
 is needed either way — Flutter picks the one your project uses.
@@ -112,14 +136,26 @@ Play Data Safety (or its App Store equivalent), the prompt appearing inside your
 
 #### Repository
 
-Add the Khipu repository to the `android/build.gradle` file
+Add the Khipu repository to `android/build.gradle.kts`, which is what `flutter create` generates:
+
+```kotlin
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+        maven { url = uri("https://dev.khipu.com/nexus/content/repositories/khenshin") }
+    }
+}
+```
+
+If your project still uses the Groovy DSL, the file is `android/build.gradle` instead:
 
 ```groovy
 allprojects {
     repositories {
         google()
         mavenCentral()
-        maven { url 'https://dev.khipu.com/nexus/content/repositories/khenshin' }
+        maven { url = 'https://dev.khipu.com/nexus/content/repositories/khenshin' }
     }
 }
 ```
