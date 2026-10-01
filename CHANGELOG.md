@@ -1,3 +1,36 @@
+# 3.0.2
+
+Android moves to `khipu-client-android 2.28.7`. It decodes the QR code of a bank authorization with
+ZXing instead of Google ML Kit, and it ships the R8 rules a release build needs. Nothing else in
+Khipu's client changed: apart from the QR decoder, its classes are identical to 2.28.5's except for
+the version string. That includes the ones behind what this plugin documents as measured on
+2.28.5, such as the five values of the result and which fields are non-null, so all of it holds
+for 2.28.7. The plugin's API does not change.
+
+**Release builds no longer need Khipu's ProGuard rules in your app.** Khipu's client now ships
+them inside its AAR, and R8 applies them on its own. Until now, an app built in release with
+minification that had not copied those rules from docs.khipu.com built without errors, but the
+payment failed as soon as it started: the payment screen closed by itself and the result came back
+as an error with no events. If you copied the rules into your `proguard-rules.pro`, they do no harm,
+and you can remove them.
+
+**Your app gets smaller.** ML Kit's barcode scanner brought a native library,
+`libbarhopper_v3.so`, into every ABI, plus its models and its telemetry. The APK stores that
+library uncompressed, at 3.2 to 5.9 MB per ABI: 14.1 MB of a release APK built for three ABIs.
+
+**One permission no longer arrives through this plugin.** ML Kit's telemetry declared
+`android.permission.ACCESS_NETWORK_STATE`, and Android merged it into your app's manifest. Neither
+this plugin nor Khipu's client needs it, so it is gone. If your own Android code calls
+`ConnectivityManager` without declaring that permission, it was only working because of ML Kit:
+declare it in your `AndroidManifest.xml`, or that call throws `SecurityException`. Likewise, any
+ProGuard rule or packaging exclude you kept for ML Kit or `libbarhopper` only because of this
+plugin can go.
+
+The published package no longer includes files the repository's `.gitignore` excludes, such as
+the IDE module file that every release from 1.7.0 to 3.0.1 carried.
+
+The iOS pin does not move: `KhipuClientIOS 2.17.1`.
+
 # 3.0.1
 
 No behaviour changes: documentation, the example app, and a regenerated channel whose code is
