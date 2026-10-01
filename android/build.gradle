@@ -64,8 +64,13 @@ android {
         // OkHttp lo llama desde varios hilos del Dispatcher a la vez: el
         // ConcurrentModificationException salía en un hilo de fondo, sin atrapar, y
         // mataba el proceso de la app del comercio.
-        // Ver IKW-1232, IKW-1233, IKW-1237, IKW-1240, IKW-1247.
-        implementation 'com.khipu:khipu-client-android:2.28.5'
+        // 2.28.6 decodifica el QR de una autorización con ZXing en vez de ML Kit: salen
+        // de la app libbarhopper_v3.so en cada ABI, los modelos de ML Kit y su
+        // telemetría, que era lo único que traía ACCESS_NETWORK_STATE al manifest.
+        // 2.28.7 trae en el AAR las reglas de R8 que antes había que copiar de la doc: sin
+        // ellas, una app release minificada compilaba bien pero el pago fallaba apenas empezaba.
+        // Ver IKW-1232, IKW-1233, IKW-1237, IKW-1240, IKW-1247, IKW-1264, IKW-1266.
+        implementation 'com.khipu:khipu-client-android:2.28.7'
         testImplementation("org.jetbrains.kotlin:kotlin-test")
         testImplementation("org.mockito:mockito-core:5.0.0")
     }
