@@ -23,7 +23,7 @@ dev_dependencies:
   # change between versions. 29.0.2 is what the §7.1 spike measured against
   # both iOS packaging paths; 29.0.4 regenerates the same three files except
   # for the version in their header.
-  pigeon: 29.0.4
+  pigeon: 29.0.6
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
