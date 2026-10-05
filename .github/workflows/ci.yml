@@ -18,8 +18,18 @@ jobs:
         with:
           flutter-version: '3.44.9'
           channel: stable
-      - run: flutter pub get
-      - run: flutter pub get
+      # --no-example: in a plugin, a plain `flutter pub get` at the root also
+      # resolves example/ and quietly rewrites its lockfile, so the enforced
+      # step below would only ever see a lock that already passes.
+      - run: flutter pub get --no-example
+      - name: Example lockfile resolves on the CI Flutter
+        # Dependabot resolves with the latest stable Flutter, not this one, and
+        # leaves versions in example/pubspec.lock that 3.44.9 pins lower
+        # (meta 1.19.0 and three more in #29). Without the flag pub fixes the
+        # lock on the runner and CI goes green on a file nobody can use. It
+        # also fails a release that bumps the plugin version without
+        # refreshing the lock.
+        run: flutter pub get --enforce-lockfile
         working-directory: example
       - run: flutter analyze
       - name: Generated code is up to date
@@ -84,7 +94,7 @@ jobs:
         with:
           flutter-version: '3.44.9'
           channel: stable
-      - run: flutter pub get
+      - run: flutter pub get --enforce-lockfile
         working-directory: example
       - run: flutter build apk --debug
         working-directory: example
@@ -110,7 +120,7 @@ jobs:
         with:
           flutter-version: '3.44.9'
           channel: stable
-      - run: flutter pub get
+      - run: flutter pub get --enforce-lockfile
         working-directory: example
       - name: Build with Swift Package Manager
         run: |
