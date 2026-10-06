@@ -4,17 +4,35 @@ on:
   push:
     branches: [main, 1.7.x]
   pull_request:
+  # No `schedule` here: GitHub only runs scheduled workflows on the default
+  # branch, so a cron in this file would never fire. A workflow on main
+  # dispatches this one against 1.7.x once a week instead, so the branch gets
+  # exercised between fixes and not only when one is already urgent.
+  workflow_dispatch:
 
 jobs:
   dart:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.41.0'
+          # Latest 3.41.x: this line exists for merchants who can't move to
+          # 3.44, so CI builds with what they have.
+          flutter-version: '3.41.9'
           channel: stable
-      - run: flutter pub get
+      # --no-example: in a plugin, a plain `flutter pub get` at the root also
+      # resolves example/ and quietly rewrites its lockfile, so the enforced
+      # step below would only ever see a lock that already passes.
+      - run: flutter pub get --no-example
+      - name: Example lockfile resolves on the CI Flutter
+        # The lock has to come from 3.41.x. One resolved with 3.44 carries
+        # meta 1.18.0 and test_api 0.7.11, which 3.41.9 pins lower; without
+        # the flag pub fixes it on the runner and CI goes green on a file
+        # nobody on this line can use. It also fails a release that bumps
+        # the plugin version without refreshing the lock.
+        run: flutter pub get --enforce-lockfile
+        working-directory: example
       - run: flutter analyze
       - run: flutter test
       - name: Publish dry run
