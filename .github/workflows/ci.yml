@@ -57,8 +57,9 @@ jobs:
         run: dart pub publish --dry-run
       - name: Tarball stays small
         # 1.7.0 shipped 87 MB of Dart compiler caches because a .pubignore
-        # stopped the root .gitignore's build/ pattern from applying. It is
-        # 98 KB today; 5 MB is room to grow and still catches that class of bug.
+        # stopped the root .gitignore's build/ pattern from applying. It was
+        # 183 KB in October 2026 (this step logs the current size); 5 MB is
+        # room to grow and still catches that class of bug.
         run: |
           size=$(dart pub publish --dry-run 2>&1 \
             | grep -oE 'Total compressed archive size: [0-9.]+ [KMG]B' \
